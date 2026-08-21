@@ -83,6 +83,36 @@ export async function getMetaDailyRowsForAd(
   return (data ?? []) as MetaDailyLike[];
 }
 
+const PAGE_SIZE = 1000;
+
+/**
+ * All-time rows for one ad, for the video analysis page (no before/after
+ * window there). PostgREST caps rows per request, so this pages through
+ * rather than trusting a single unbounded `.select()`.
+ */
+export async function getAllMetaDailyRowsForAd(adId: string): Promise<MetaDailyLike[]> {
+  const supabase = getSupabaseServiceRoleClient();
+  const rows: MetaDailyLike[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("meta_daily")
+      .select(
+        "date, spend, impressions, reach, frequency, clicks, link_clicks, video_plays, video_3s, video_25, video_50, video_75, video_95, video_100, avg_watch_time"
+      )
+      .eq("ad_id", adId)
+      .order("date", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throwSupabaseError("meta_daily 조회", error);
+    if (!data || data.length === 0) break;
+    rows.push(...(data as MetaDailyLike[]));
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return rows;
+}
+
 export interface AdHierarchyRow {
   campaignId: string | null;
   campaignName: string | null;

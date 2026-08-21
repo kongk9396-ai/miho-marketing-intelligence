@@ -15,6 +15,10 @@ interface MetricDef {
   polarity: MetricPolarity;
   unit: MetricUnit;
   getValue: (m: PeriodMetrics) => number | null;
+  /** Raw event count backing a rate value (video retention rates) — shown alongside the % per spec. */
+  getCount?: (m: PeriodMetrics) => number;
+  /** False when the sample (e.g. video plays) is too small to trust the rate — forces a "표본 부족" status. */
+  getReliable?: (m: PeriodMetrics) => boolean;
 }
 
 const METRIC_DEFS: MetricDef[] = [
@@ -33,19 +37,20 @@ const METRIC_DEFS: MetricDef[] = [
   { key: "linkCpc", label: "링크 CPC", section: "click", polarity: "lower_is_better", unit: "won", getValue: (m) => m.linkCpc },
   // 영상
   { key: "avgWatchTime", label: "평균 시청시간", section: "video", polarity: "higher_is_better", unit: "seconds", getValue: (m) => m.avgWatchTime },
-  { key: "video3s", label: "3초 재생률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video3s.rate },
-  { key: "video25", label: "25% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video25.rate },
-  { key: "video50", label: "50% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video50.rate },
-  { key: "video75", label: "75% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video75.rate },
-  { key: "video95", label: "95% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video95.rate },
-  { key: "video100", label: "완주율", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video100.rate },
+  { key: "video3s", label: "3초 재생률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video3s.rate, getCount: (m) => m.video3s.count, getReliable: (m) => m.video3s.reliable },
+  { key: "video25", label: "25% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video25.rate, getCount: (m) => m.video25.count, getReliable: (m) => m.video25.reliable },
+  { key: "video50", label: "50% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video50.rate, getCount: (m) => m.video50.count, getReliable: (m) => m.video50.reliable },
+  { key: "video75", label: "75% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video75.rate, getCount: (m) => m.video75.count, getReliable: (m) => m.video75.reliable },
+  { key: "video95", label: "95% 도달률", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video95.rate, getCount: (m) => m.video95.count, getReliable: (m) => m.video95.reliable },
+  { key: "video100", label: "완주율", section: "video", polarity: "higher_is_better", unit: "percent1", getValue: (m) => m.video100.rate, getCount: (m) => m.video100.count, getReliable: (m) => m.video100.reliable },
 ];
 
 /** Changes smaller than this (in relative %) are treated as noise, not a real move. */
 const FLAT_THRESHOLD_PERCENT = 5;
 
-function formatValue(unit: MetricUnit, value: number | null): string {
+function formatValue(unit: MetricUnit, value: number | null, count?: number): string {
   if (value === null) return "—";
+  const countSuffix = count !== undefined ? ` (${count.toLocaleString("ko-KR")}건)` : "";
   switch (unit) {
     case "won":
       return `₩${Math.round(value).toLocaleString("ko-KR")}`;
@@ -54,7 +59,7 @@ function formatValue(unit: MetricUnit, value: number | null): string {
     case "percent":
       return `${value.toFixed(2)}%`;
     case "percent1":
-      return `${value.toFixed(1)}%`;
+      return `${value.toFixed(1)}%${countSuffix}`;
     case "seconds":
       return `${value.toFixed(1)}초`;
     case "frequency":
@@ -97,8 +102,17 @@ export function buildMetricComparisons(before: PeriodMetrics, after: PeriodMetri
   return METRIC_DEFS.map((def) => {
     const beforeValue = def.getValue(before);
     const afterValue = def.getValue(after);
+    const beforeCount = def.getCount?.(before);
+    const afterCount = def.getCount?.(after);
     const changePercent = computeChangePercent(beforeValue, afterValue);
-    const { status, label: statusLabel } = classifyStatus(def.polarity, changePercent);
+
+    // A rate built from too small a sample on either side isn't safe to
+    // call "improved"/"worsened" — flag it as insufficient sample instead of
+    // trusting whatever direction the noisy percentage happens to point.
+    const isUnreliable = def.getReliable ? !def.getReliable(before) || !def.getReliable(after) : false;
+    const { status, label: statusLabel } = isUnreliable
+      ? { status: "unavailable" as const, label: "표본 부족" }
+      : classifyStatus(def.polarity, changePercent);
 
     return {
       key: def.key,
@@ -107,8 +121,8 @@ export function buildMetricComparisons(before: PeriodMetrics, after: PeriodMetri
       polarity: def.polarity,
       beforeValue,
       afterValue,
-      beforeDisplay: formatValue(def.unit, beforeValue),
-      afterDisplay: formatValue(def.unit, afterValue),
+      beforeDisplay: formatValue(def.unit, beforeValue, beforeCount),
+      afterDisplay: formatValue(def.unit, afterValue, afterCount),
       diffDisplay: formatDiff(def.unit, beforeValue, afterValue),
       changePercent,
       changePercentDisplay:

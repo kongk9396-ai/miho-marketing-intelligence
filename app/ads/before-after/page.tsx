@@ -162,28 +162,28 @@ export default async function BeforeAfterPage({ searchParams }: BeforeAfterPageP
             title="CTR 추이"
             data={dailySeries.map((d) => ({ date: d.date, value: d.ctr }))}
             markers={markersInRange}
-            valueFormatter={(v) => `${v.toFixed(2)}%`}
+            valueFormat="percent2"
             color="#2563eb"
           />
           <MetricTimelineChart
             title="CPC 추이"
             data={dailySeries.map((d) => ({ date: d.date, value: d.cpc }))}
             markers={markersInRange}
-            valueFormatter={(v) => `₩${Math.round(v).toLocaleString("ko-KR")}`}
+            valueFormat="won"
             color="#dc2626"
           />
           <MetricTimelineChart
             title="광고비 추이"
             data={dailySeries.map((d) => ({ date: d.date, value: d.spend }))}
             markers={markersInRange}
-            valueFormatter={(v) => `₩${Math.round(v).toLocaleString("ko-KR")}`}
+            valueFormat="won"
             color="#059669"
           />
           <MetricTimelineChart
             title="50% 시청률 추이"
             data={dailySeries.map((d) => ({ date: d.date, value: d.video50Rate }))}
             markers={markersInRange}
-            valueFormatter={(v) => `${v.toFixed(1)}%`}
+            valueFormat="percent1"
             color="#7c3aed"
           />
         </div>
@@ -192,7 +192,7 @@ export default async function BeforeAfterPage({ searchParams }: BeforeAfterPageP
             title="완주율 추이"
             data={dailySeries.map((d) => ({ date: d.date, value: d.completionRate }))}
             markers={markersInRange}
-            valueFormatter={(v) => `${v.toFixed(1)}%`}
+            valueFormat="percent1"
             color="#ea580c"
           />
         </div>

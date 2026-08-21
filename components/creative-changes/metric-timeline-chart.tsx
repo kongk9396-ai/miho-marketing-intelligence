@@ -8,11 +8,29 @@ import { formatKoreanMonthDay, toKstDateOnly } from "@/lib/date/kst";
 import { cn } from "@/lib/utils";
 import type { CreativeChangeRecord } from "@/lib/creative-changes/types";
 
+type ValueFormat = "percent1" | "percent2" | "won";
+
+function formatValue(format: ValueFormat, value: number): string {
+  switch (format) {
+    case "percent1":
+      return `${value.toFixed(1)}%`;
+    case "percent2":
+      return `${value.toFixed(2)}%`;
+    case "won":
+      return `₩${Math.round(value).toLocaleString("ko-KR")}`;
+  }
+}
+
 interface MetricTimelineChartProps {
   title: string;
   data: Array<{ date: string; value: number | null }>;
   markers: CreativeChangeRecord[];
-  valueFormatter: (value: number) => string;
+  /**
+   * A format kind, not a function — functions can't cross the Server ->
+   * Client Component boundary as props, so formatting happens here instead
+   * of via a caller-supplied callback.
+   */
+  valueFormat: ValueFormat;
   color?: string;
 }
 
@@ -20,7 +38,7 @@ export function MetricTimelineChart({
   title,
   data,
   markers,
-  valueFormatter,
+  valueFormat,
   color = "#2563eb",
 }: MetricTimelineChartProps) {
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
@@ -39,7 +57,7 @@ export function MetricTimelineChart({
           />
           <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} width={44} />
           <Tooltip
-            formatter={(value) => (typeof value === "number" ? valueFormatter(value) : String(value ?? ""))}
+            formatter={(value) => (typeof value === "number" ? formatValue(valueFormat, value) : String(value ?? ""))}
             contentStyle={{ borderRadius: 8, borderColor: "#e5e7eb", fontSize: 12 }}
           />
           {markers.map((marker) => (
