@@ -112,6 +112,7 @@ export const navSections: NavSection[] = [
       { label: "Meta 자동 수집", href: "/data/meta-sync", icon: MailCheck },
       { label: "Meta CSV 업로드", href: "/data/meta-csv-upload", icon: Upload },
       { label: "GA4 자동 수집", href: "/data/ga4-sync", icon: RefreshCw },
+      { label: "DB 자동 동기화", href: "/data/leads-sync", icon: Users },
       { label: "데이터 매핑", href: "/data/utm-mapping", icon: Waypoints },
     ],
   },

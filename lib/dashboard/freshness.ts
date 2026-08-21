@@ -1,7 +1,7 @@
 import "server-only";
 import { getLatestMetaDailyDate } from "@/lib/meta/repository";
 import { getLatestGa4DataDate } from "@/lib/ga4/repository";
-import { getLatestLeadsDate } from "@/lib/dashboard/repository";
+import { getLatestLeadsAppliedAt } from "@/lib/leads-sync/repository";
 import { diffDaysBetweenDateOnly, toKstDateOnly } from "@/lib/date/kst";
 
 /** A source is flagged stale once its latest data is this many KST days behind today or older. */
@@ -31,13 +31,13 @@ export interface DashboardFreshness {
 export async function getDashboardFreshness(): Promise<DashboardFreshness> {
   const today = toKstDateOnly(new Date().toISOString());
 
-  const [metaDate, ga4Date, leadsCreatedAt] = await Promise.all([
+  const [metaDate, ga4Date, leadsAppliedAt] = await Promise.all([
     getLatestMetaDailyDate(),
     getLatestGa4DataDate(),
-    getLatestLeadsDate(),
+    getLatestLeadsAppliedAt(),
   ]);
 
-  const leadsDateOnly = leadsCreatedAt ? toKstDateOnly(leadsCreatedAt) : null;
+  const leadsDateOnly = leadsAppliedAt ? toKstDateOnly(leadsAppliedAt) : null;
 
   return {
     meta: toFreshness("Meta", metaDate, today),

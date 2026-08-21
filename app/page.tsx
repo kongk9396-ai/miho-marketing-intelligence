@@ -125,16 +125,25 @@ export default async function DashboardPage() {
           icon={UserCheck}
           emptyHint={!kpi || kpi.totalLeads === 0 ? NO_LEADS_HINT : undefined}
         />
+        <KpiCard label="유효 DB율" value={formatPercent(kpi?.validDbRate ?? null)} icon={Percent} />
         <KpiCard
           label="유효 CPA"
           value={kpi?.validCpa != null ? formatWon(kpi.validCpa) : "-"}
           icon={BadgeCheck}
         />
         <KpiCard
-          label="예약 수"
-          value={formatCount(kpi?.bookedLeads ?? 0)}
+          label="예약 확정"
+          value={formatCount(kpi?.confirmedBookings ?? 0)}
           icon={CalendarCheck}
           emptyHint={!kpi || kpi.totalLeads === 0 ? NO_LEADS_HINT : undefined}
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard
+          label="예약 CPA"
+          value={kpi?.bookingCpa != null ? formatWon(kpi.bookingCpa) : "-"}
+          icon={DollarSign}
         />
         <KpiCard
           label="랜딩 전환율"
