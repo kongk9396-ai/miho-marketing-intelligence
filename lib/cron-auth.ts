@@ -27,3 +27,13 @@ export function checkCronSecret(
 export function isAuthorizedCronRequest(request: Request): boolean {
   return checkCronSecret(request.headers.get("authorization"), process.env.CRON_SECRET);
 }
+
+/**
+ * Separate secret from CRON_SECRET on purpose: this one is held by an
+ * external third party (DBcart, or whatever writes to it), not just
+ * Render's own cron system, so it should be independently rotatable
+ * without affecting the Meta/GA4/leads sync cron jobs.
+ */
+export function isAuthorizedAttributionIngestRequest(request: Request): boolean {
+  return checkCronSecret(request.headers.get("authorization"), process.env.LEADS_ATTRIBUTION_INGEST_SECRET);
+}

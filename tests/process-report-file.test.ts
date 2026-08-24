@@ -17,9 +17,9 @@ import {
 import { processMetaReportFile } from "@/lib/meta/process-report-file";
 
 const CSV = [
-  "Day,Ad ID,Ad name,Amount spent (KRW),Impressions",
-  "2026-08-20,ad-1,광고 A,120000,5000",
-  "2026-08-20,ad-2,광고 B,98000,4200",
+  "Day,Campaign name,Ad ID,Ad name,Amount spent (KRW),Impressions",
+  "2026-08-20,캠페인,ad-1,광고 A,120000,5000",
+  "2026-08-20,캠페인,ad-2,광고 B,98000,4200",
 ].join("\n");
 
 function fakeRecord(overrides: Partial<MetaImportHistoryRecord> = {}): MetaImportHistoryRecord {

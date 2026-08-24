@@ -33,6 +33,40 @@ export async function getLeadsInRange(startIso: string, endIsoExclusive: string)
   return rows;
 }
 
+/**
+ * Leads matched to one ad's resolved UTM campaign/content, in [startIso,
+ * endIsoExclusive) — used by the ad auto-diagnosis engine's targeting/lead
+ * quality check. Never guesses a match: an ad with no rows here simply gets
+ * no targeting judgment (see lib/ad-diagnosis).
+ */
+export async function getLeadsForCampaignContent(
+  utmCampaign: string,
+  utmContent: string,
+  startIso: string,
+  endIsoExclusive: string
+): Promise<LeadAnalysisRow[]> {
+  const supabase = getSupabaseServiceRoleClient();
+  const rows: LeadAnalysisRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("leads")
+      .select(SELECT_COLUMNS)
+      .eq("utm_campaign", utmCampaign)
+      .eq("utm_content", utmContent)
+      .gte("applied_at", startIso)
+      .lt("applied_at", endIsoExclusive)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throwSupabaseError("leads 조회", error);
+    if (!data || data.length === 0) break;
+    rows.push(...(data as LeadAnalysisRow[]));
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return rows;
+}
+
 /** All-time leads (no date filter) — for the dashboard's all-time KPI convention. */
 export async function getAllLeadsForAnalysis(): Promise<LeadAnalysisRow[]> {
   const supabase = getSupabaseServiceRoleClient();

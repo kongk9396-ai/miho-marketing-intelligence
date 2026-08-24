@@ -8,7 +8,7 @@
  * place both the manual upload and Gmail auto-collect paths read from.
  */
 export const HEADER_ALIASES: Record<string, string[]> = {
-  date: ["Day", "Date", "Reporting starts", "일", "날짜", "보고 시작일"],
+  date: ["Day", "Date", "Reporting starts", "Reporting ends", "일", "날짜", "보고 시작", "보고 종료", "보고 시작일"],
   account_name: ["Account name", "계정 이름"],
   campaign_id: ["Campaign ID", "캠페인 ID"],
   campaign_name: ["Campaign name", "Campaign Name", "캠페인 이름"],
@@ -30,12 +30,22 @@ export const HEADER_ALIASES: Record<string, string[]> = {
   clicks: ["Clicks (all)", "Clicks", "클릭(전체)", "클릭"],
   link_clicks: ["Link clicks", "링크 클릭"],
   ctr: ["CTR (all)", "CTR", "CTR(전체)"],
-  link_ctr: ["CTR (link click-through rate)", "링크 클릭율(CTR)", "링크 CTR"],
+  link_ctr: [
+    "CTR (link click-through rate)",
+    "링크 클릭율(CTR)",
+    "링크 CTR",
+    "CTR(링크 클릭률)",
+    "링크 클릭률(CTR)",
+  ],
   cpc: ["CPC (all)", "CPC (cost per link click)", "CPC(전체)"],
-  link_cpc: ["CPC (cost per link click)", "링크 클릭당 비용(CPC)"],
+  link_cpc: [
+    "CPC (cost per link click)",
+    "링크 클릭당 비용(CPC)",
+    "CPC(링크 클릭당 비용)",
+  ],
   cpm: ["CPM (cost per 1,000 impressions)", "CPM(1,000회 노출당 비용)"],
   video_plays: ["Video plays", "동영상 재생"],
-  video_3s: ["3-second video plays", "3초 동영상 재생"],
+  video_3s: ["3-second video plays", "3초 동영상 재생", "동영상 3초 이상 재생"],
   video_25: [
     "Video plays at 25%",
     "Video watches at 25%",
@@ -68,8 +78,13 @@ export const HEADER_ALIASES: Record<string, string[]> = {
   ],
 };
 
-/** Fields that must be present (mapped to a column) for a file to be usable. */
-export const REQUIRED_FIELDS = ["date", "ad_id"] as const;
+/**
+ * Fields that must be present (mapped to a column) for a file to be usable.
+ * ad_id is deliberately not required — Meta exports don't always include it,
+ * and a stable temp id is generated per row when it's missing (see
+ * lib/meta/temp-ad-id.ts).
+ */
+export const REQUIRED_FIELDS = ["date", "campaign_name", "ad_name"] as const;
 
 export function normalizeHeader(header: string): string {
   return header.trim().toLowerCase().replace(/\s+/g, " ");

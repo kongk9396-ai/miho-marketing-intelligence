@@ -1,7 +1,14 @@
 import "server-only";
 import { google } from "googleapis";
 
-const SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
+// Read-write: this app's own leads-sync reads consultation sheets and
+// writes only to the app-owned marketing_attribution tab it creates itself
+// (see ensureAttributionSheetExists) — it never writes to the consultation
+// team's 코첫/코재/눈 tabs. The service account must be shared on the
+// spreadsheet as "편집자"(Editor), not just "뷰어"(Viewer), for the write
+// half (tab creation + header row) to succeed; read-only access still works
+// for everything else if only Viewer was granted.
+const SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -54,6 +61,69 @@ export async function listSheetTabNames(): Promise<string[]> {
 
   const response = await sheets.spreadsheets.get({ spreadsheetId, fields: "sheets.properties.title" });
   return (response.data.sheets ?? []).map((s) => s.properties?.title).filter((t): t is string => Boolean(t));
+}
+
+export interface EnsureSheetResult {
+  sheetName: string;
+  created: boolean; // true = this call created it; false = it already existed (never recreated/overwritten)
+  headerWritten: boolean;
+}
+
+/**
+ * Creates `sheetName` as a new tab (with `headers` as its first row) if it
+ * doesn't already exist in the configured spreadsheet — idempotent: an
+ * existing tab is left completely untouched (not even its header row is
+ * rewritten), so this is safe to call on every sync run. Never touches any
+ * other tab. Requires the service account to have Editor (not just Viewer)
+ * access on the spreadsheet; a permission error propagates to the caller
+ * rather than being swallowed, since tab creation is an explicit,
+ * user-requested action, not best-effort background enrichment.
+ */
+export async function ensureAttributionSheetExists(
+  sheetName: string,
+  headers: readonly string[]
+): Promise<EnsureSheetResult> {
+  const sheets = createSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  const existingTabs = await listSheetTabNames();
+  if (existingTabs.includes(sheetName)) {
+    return { sheetName, created: false, headerWritten: false };
+  }
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: sheetName } } }],
+    },
+  });
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${sheetName}!A1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[...headers]] },
+  });
+
+  return { sheetName, created: true, headerWritten: true };
+}
+
+/**
+ * Appends a single row to the end of `sheetName`. Used only for the
+ * app-owned marketing_attribution tab (see appendAttributionRecord in
+ * attribution-repository.ts) — never for the consultation team's sheets.
+ */
+export async function appendRow(sheetName: string, values: unknown[]): Promise<void> {
+  const sheets = createSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${sheetName}!A1`,
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [values] },
+  });
 }
 
 /**

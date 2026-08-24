@@ -38,8 +38,18 @@ export interface MetaTotals {
 /** All-time Meta totals (no date filter) — backs "총 광고비" and the non-averaged CTR KPI. */
 export async function getMetaTotals(): Promise<MetaTotals> {
   const supabase = getSupabaseServiceRoleClient();
+  // Excludes Meta grand-total/summary rows (blank ad_name/campaign_name) —
+  // those hold the same report's totals a second time, so including them
+  // would double-count spend/impressions/clicks on top of the real per-ad
+  // rows already in the same file.
   const rows = await fetchAllPages<{ spend: number; impressions: number; clicks: number }>(
-    (from, to) => supabase.from("meta_daily").select("spend, impressions, clicks").range(from, to),
+    (from, to) =>
+      supabase
+        .from("meta_daily")
+        .select("spend, impressions, clicks")
+        .not("ad_name", "is", null)
+        .not("campaign_name", "is", null)
+        .range(from, to),
     "meta_daily 집계 조회"
   );
 
@@ -78,7 +88,14 @@ export async function getMetaSpendByDate(startDate: string, endDate: string): Pr
   const supabase = getSupabaseServiceRoleClient();
   const rows = await fetchAllPages<{ date: string; spend: number }>(
     (from, to) =>
-      supabase.from("meta_daily").select("date, spend").gte("date", startDate).lte("date", endDate).range(from, to),
+      supabase
+        .from("meta_daily")
+        .select("date, spend")
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .not("ad_name", "is", null)
+        .not("campaign_name", "is", null)
+        .range(from, to),
     "meta_daily 조회"
   );
 

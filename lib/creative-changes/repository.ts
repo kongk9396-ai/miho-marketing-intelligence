@@ -1,7 +1,12 @@
 import "server-only";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { throwSupabaseError } from "@/lib/meta/schema-not-ready";
-import type { CreativeChangeInput, CreativeChangeRecord, MetaDailyLike } from "@/lib/creative-changes/types";
+import type {
+  CreativeChangeInput,
+  CreativeChangeRecord,
+  MetaDailyLike,
+  MetaDailyWithRates,
+} from "@/lib/creative-changes/types";
 
 export async function listCreativeChanges(limit = 100): Promise<CreativeChangeRecord[]> {
   const supabase = getSupabaseServiceRoleClient();
@@ -83,6 +88,65 @@ export async function getMetaDailyRowsForAd(
   return (data ?? []) as MetaDailyLike[];
 }
 
+/**
+ * Same rows as getMetaDailyRowsForAd, plus the raw per-row rate columns
+ * (ctr/link_ctr/cpc/link_cpc/cpm) Meta itself reports. Used by the ad
+ * auto-diagnosis engine's CTR/CPC fallback: some Meta report exports omit
+ * the raw click-count column while still including the rate column, and
+ * recomputing CTR/CPC from a missing click count would silently show 0/—
+ * even though Meta's own rate is available.
+ */
+export async function getMetaDailyRawRowsForAd(
+  adId: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaDailyWithRates[]> {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .from("meta_daily")
+    .select(
+      "date, spend, impressions, reach, frequency, clicks, link_clicks, video_plays, video_3s, video_25, video_50, video_75, video_95, video_100, avg_watch_time, ctr, link_ctr, cpc, link_cpc, cpm"
+    )
+    .eq("ad_id", adId)
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .order("date", { ascending: true });
+
+  if (error) throwSupabaseError("meta_daily 조회", error);
+  return (data ?? []) as MetaDailyWithRates[];
+}
+
+/**
+ * Same as getMetaDailyRawRowsForAd, but across every ad_id in `adIds` at
+ * once. A single real-world ad can have more than one ad_id in meta_daily —
+ * early CSV exports that omitted the "Ad ID" column got a stable temp:
+ * hash id (see lib/meta/temp-ad-id.ts), and a later export with the real
+ * Meta ad_id doesn't retroactively rewrite those older rows. Reporting on
+ * one of those ad_ids alone silently shows only part of that ad's spend and
+ * clicks — the auto-diagnosis build groups by (campaign_name, ad_name)
+ * first and calls this with every ad_id sharing that identity.
+ */
+export async function getMetaDailyRawRowsForAds(
+  adIds: string[],
+  startDate: string,
+  endDate: string
+): Promise<MetaDailyWithRates[]> {
+  if (adIds.length === 0) return [];
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .from("meta_daily")
+    .select(
+      "date, spend, impressions, reach, frequency, clicks, link_clicks, video_plays, video_3s, video_25, video_50, video_75, video_95, video_100, avg_watch_time, ctr, link_ctr, cpc, link_cpc, cpm"
+    )
+    .in("ad_id", adIds)
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .order("date", { ascending: true });
+
+  if (error) throwSupabaseError("meta_daily 조회", error);
+  return (data ?? []) as MetaDailyWithRates[];
+}
+
 const PAGE_SIZE = 1000;
 
 /**
@@ -135,7 +199,11 @@ export async function getMetaAdHierarchy(): Promise<AdHierarchyRow[]> {
 
   const seen = new Map<string, AdHierarchyRow>();
   for (const row of data ?? []) {
-    if (!row.ad_id) continue;
+    // Meta's grand-total/summary rows (all name columns blank) shouldn't
+    // normally reach meta_daily at all (the parser skips them), but this
+    // guard also neutralizes any already-stored ones so they never show up
+    // as a phantom "ad" or get summed into per-ad/campaign totals.
+    if (!row.ad_id || !row.ad_name || !row.campaign_name) continue;
     if (!seen.has(row.ad_id)) {
       seen.set(row.ad_id, {
         campaignId: row.campaign_id,

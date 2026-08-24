@@ -2,6 +2,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { HEADER_ALIASES, REQUIRED_FIELDS, resolveHeaderMap } from "@/lib/meta/header-aliases";
 import { parseDateString, parseInteger, parseNumeric, parseRequiredNumeric } from "@/lib/meta/number-utils";
+import { computeTempAdId } from "@/lib/meta/temp-ad-id";
 import type { MetaDailyInsert, ParseResult, RowParseError } from "@/lib/meta/types";
 
 export type AttachmentKind = "csv" | "xlsx";
@@ -73,26 +74,41 @@ export function normalizeMetaRows(records: Record<string, unknown>[]): ParseResu
     };
 
     const date = parseDateString(get("date"));
-    const adId = String(get("ad_id") ?? "").trim();
-
     if (!date) {
       rowErrors.push({ rowNumber, message: "날짜 값을 인식할 수 없습니다." });
       return;
     }
-    if (!adId) {
-      rowErrors.push({ rowNumber, message: "광고 ID 값이 비어 있습니다." });
+
+    const campaignName = nullableString(get("campaign_name"));
+    const adsetName = nullableString(get("adset_name"));
+    const adName = nullableString(get("ad_name"));
+
+    // Meta's report exports frequently include a grand-total row (metrics
+    // summed across every ad in the report) with every name column blank.
+    // That row is not a real ad — storing it would double-count spend and
+    // impressions on top of the real per-ad rows already in the same file.
+    if (!campaignName && !adName) {
+      rowErrors.push({ rowNumber, message: "캠페인/광고 이름이 없는 합계(요약) 행으로 판단되어 건너뜁니다." });
       return;
     }
+
+    // A real ad_id always wins when present; a missing column or an empty
+    // cell for this specific row falls back to a stable hash of
+    // campaign/adset/ad name instead of failing the row.
+    const realAdId = String(get("ad_id") ?? "").trim();
+    const adId = realAdId || computeTempAdId(campaignName, adsetName, adName);
+    const isTempAdId = !realAdId;
 
     rows.push({
       date,
       account_name: nullableString(get("account_name")),
       campaign_id: nullableString(get("campaign_id")),
-      campaign_name: nullableString(get("campaign_name")),
+      campaign_name: campaignName,
       adset_id: nullableString(get("adset_id")),
-      adset_name: nullableString(get("adset_name")),
+      adset_name: adsetName,
       ad_id: adId,
-      ad_name: nullableString(get("ad_name")),
+      is_temp_ad_id: isTempAdId,
+      ad_name: adName,
       spend: parseRequiredNumeric(get("spend")),
       impressions: parseInteger(get("impressions")),
       reach: parseInteger(get("reach")),

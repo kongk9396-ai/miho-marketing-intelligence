@@ -6,6 +6,8 @@ export interface MetaDailyInsert {
   adset_id: string | null;
   adset_name: string | null;
   ad_id: string;
+  /** True when ad_id was generated from campaign_name+adset_name+ad_name because the file had no real Ad ID for this row. */
+  is_temp_ad_id: boolean;
   ad_name: string | null;
   spend: number;
   impressions: number;
@@ -36,7 +38,7 @@ export interface RowParseError {
 export interface ParseResult {
   rows: MetaDailyInsert[];
   rowErrors: RowParseError[];
-  /** Set when the file is missing a required column (date or ad_id) — parsing aborted entirely. */
+  /** Set when the file is missing a required column (date, campaign_name, or ad_name) — parsing aborted entirely. */
   fatalError?: string;
 }
 

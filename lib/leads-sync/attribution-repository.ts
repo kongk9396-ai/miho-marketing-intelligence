@@ -1,0 +1,171 @@
+import "server-only";
+import { appendRow, fetchSheetRecords } from "@/lib/leads-sync/sheets-client";
+import { parseSheetDateTime } from "@/lib/leads-sync/parse-date";
+import { normalizeHeader } from "@/lib/leads-sync/header-aliases";
+
+/**
+ * A single row from the DBcart-fed attribution tab (e.g. "marketing_attribution")
+ * — never patient PII, just what's needed to attach UTM values to an
+ * existing consultation-sheet lead. Joined to a leads upsert row by
+ * (source_sheet, source_row) — the same physical row DBcart just appended
+ * to the consultation sheet in the same submission. See
+ * docs/lead-attribution-setup.md for the write-side contract.
+ */
+export interface AttributionRecord {
+  sourceSheet: string;
+  sourceRow: number;
+  submittedAt: string | null;
+  landingName: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  /** Snapshot at submission time only — the consultation sheet's own columns are the authoritative, kept-up-to-date source; never used to override them. */
+  resultStatus: string | null;
+  bookingStatus: string | null;
+}
+
+const ATTRIBUTION_HEADER_ALIASES: Record<string, string[]> = {
+  source_sheet: ["source_sheet"],
+  source_row: ["source_row"],
+  submitted_at: ["submitted_at"],
+  landing_name: ["landing_name"],
+  utm_source: ["utm_source"],
+  utm_medium: ["utm_medium"],
+  utm_campaign: ["utm_campaign"],
+  utm_content: ["utm_content"],
+  result_status: ["result_status"],
+  booking_status: ["booking_status"],
+};
+
+/** The header row this app expects to find (and creates) on the attribution tab — see ensureAttributionSheetExists. */
+export const ATTRIBUTION_SHEET_HEADERS = [
+  "submitted_at",
+  "landing_name",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "result_status",
+  "booking_status",
+  "source_sheet",
+  "source_row",
+] as const;
+
+function resolveAttributionHeaderMap(rawHeaders: string[]): Record<string, string> {
+  const normalizedToRaw = new Map<string, string>();
+  for (const raw of rawHeaders) normalizedToRaw.set(normalizeHeader(raw), raw);
+
+  const resolved: Record<string, string> = {};
+  for (const [field, aliases] of Object.entries(ATTRIBUTION_HEADER_ALIASES)) {
+    for (const alias of aliases) {
+      const match = normalizedToRaw.get(normalizeHeader(alias));
+      if (match) {
+        resolved[field] = match;
+        break;
+      }
+    }
+  }
+  return resolved;
+}
+
+function nullableString(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = String(value).trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+/** Builds the map key this module and row-mapper.ts both use to join a lead to its attribution row. */
+export function attributionMatchKey(sheetName: string, rowNumber: number): string {
+  return `${sheetName}|||${rowNumber}`;
+}
+
+export function parseAttributionRecords(records: Record<string, unknown>[]): AttributionRecord[] {
+  if (records.length === 0) return [];
+  const headerMap = resolveAttributionHeaderMap(Object.keys(records[0]));
+  if (!headerMap.source_sheet || !headerMap.source_row) return []; // not the expected shape — never guess a join key
+
+  return records
+    .map((record) => {
+      const get = (field: string): unknown => {
+        const header = headerMap[field];
+        return header ? record[header] : undefined;
+      };
+      const sourceSheet = nullableString(get("source_sheet"));
+      const sourceRowRaw = nullableString(get("source_row"));
+      const sourceRow = sourceRowRaw !== null ? Number(sourceRowRaw) : NaN;
+      if (!sourceSheet || !Number.isFinite(sourceRow)) return null;
+
+      return {
+        sourceSheet,
+        sourceRow,
+        submittedAt: parseSheetDateTime(get("submitted_at")),
+        landingName: nullableString(get("landing_name")),
+        utmSource: nullableString(get("utm_source")),
+        utmMedium: nullableString(get("utm_medium")),
+        utmCampaign: nullableString(get("utm_campaign")),
+        utmContent: nullableString(get("utm_content")),
+        resultStatus: nullableString(get("result_status")),
+        bookingStatus: nullableString(get("booking_status")),
+      };
+    })
+    .filter((r): r is AttributionRecord => r !== null);
+}
+
+/** Input for appendAttributionRecord — no PII fields exist on this type at all, by design. */
+export interface AttributionRecordInput {
+  landingName: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  sourceSheet: string;
+  sourceRow: number;
+}
+
+/**
+ * Appends one row to the attribution tab, in the exact ATTRIBUTION_SHEET_HEADERS
+ * column order. `submitted_at` is always set server-side (now), never
+ * trusted from the caller. result_status/booking_status are always left
+ * blank here — DBcart writes this row at submission time, before either
+ * status exists.
+ */
+export async function appendAttributionRecord(sheetName: string, input: AttributionRecordInput): Promise<void> {
+  await appendRow(sheetName, [
+    new Date().toISOString(), // submitted_at
+    input.landingName ?? "",
+    input.utmSource ?? "",
+    input.utmMedium ?? "",
+    input.utmCampaign ?? "",
+    input.utmContent ?? "",
+    "", // result_status
+    "", // booking_status
+    input.sourceSheet,
+    input.sourceRow,
+  ]);
+}
+
+/**
+ * Reads the attribution tab and returns (source_sheet, source_row) -> record.
+ * Returns null (never throws) when the tab doesn't exist yet or isn't in the
+ * expected shape — this is optional, additive enrichment, so its absence
+ * must never fail or partially-fail the main consultation-sheet sync.
+ */
+export async function fetchAttributionMatchMap(
+  sheetName: string,
+  fetchRecords: (sheetName: string) => Promise<Record<string, unknown>[]> = fetchSheetRecords
+): Promise<Map<string, AttributionRecord> | null> {
+  let records: Record<string, unknown>[];
+  try {
+    records = await fetchRecords(sheetName);
+  } catch {
+    return null;
+  }
+
+  const parsed = parseAttributionRecords(records);
+  if (parsed.length === 0 && records.length > 0) return null; // shape didn't match — don't pretend it's "empty but fine"
+
+  const map = new Map<string, AttributionRecord>();
+  for (const record of parsed) map.set(attributionMatchKey(record.sourceSheet, record.sourceRow), record);
+  return map;
+}

@@ -1,12 +1,14 @@
 import { LEADS_REQUIRED_FIELDS, resolveLeadsHeaderMap } from "@/lib/leads-sync/header-aliases";
 import { parseSheetDateTime } from "@/lib/leads-sync/parse-date";
 import { computeLeadKey } from "@/lib/leads-sync/lead-key";
+import { attributionMatchKey } from "@/lib/leads-sync/attribution-repository";
 import {
   deriveBookingStatus,
   deriveIsValid,
   normalizeConsultationStatus,
   normalizeOutcomeStatus,
 } from "@/lib/leads-sync/status-mapping";
+import type { AttributionRecord } from "@/lib/leads-sync/attribution-repository";
 import type { LeadUpsertRow, MapSheetRowsResult } from "@/lib/leads-sync/types";
 
 function nullableString(value: unknown): string | null {
@@ -22,6 +24,18 @@ export interface SheetRowSource {
 }
 
 /**
+ * Optional DBcart-fed attribution enrichment (see lib/leads-sync/attribution-repository.ts
+ * and docs/lead-attribution-setup.md). Joined by (source sheet name, sheet
+ * row number) — the same physical row DBcart just appended to the
+ * consultation sheet in the same submission. When absent or unmatched,
+ * utm_source/medium/campaign/content simply stay whatever the consultation
+ * sheet's own columns provide (usually null — never guessed).
+ */
+export interface AttributionEnrichment {
+  matchMap: Map<string, AttributionRecord>;
+}
+
+/**
  * Raw sheet records (header -> cell text, from row-oriented conversion of
  * the sheet's values) -> normalized leads upsert rows. A row without a
  * recognizable applied_at is skipped, never inserted with a guessed date.
@@ -30,7 +44,11 @@ export interface SheetRowSource {
  * returned rows — phone is read only to feed computeLeadKey and is
  * discarded immediately after.
  */
-export function mapSheetRows(records: Record<string, unknown>[], source: SheetRowSource): MapSheetRowsResult {
+export function mapSheetRows(
+  records: Record<string, unknown>[],
+  source: SheetRowSource,
+  attribution: AttributionEnrichment | null = null
+): MapSheetRowsResult {
   if (records.length === 0) return { rows: [], skipped: [] };
 
   const headerMap = resolveLeadsHeaderMap(Object.keys(records[0]), source.columnOverrides);
@@ -64,9 +82,27 @@ export function mapSheetRows(records: Record<string, unknown>[], source: SheetRo
       return;
     }
 
-    const utmCampaign = nullableString(get("utm_campaign"));
-    const utmContent = nullableString(get("utm_content"));
     const phone = nullableString(get("phone"));
+
+    // The consultation sheet's own utm/landing columns always win when
+    // present; the DBcart attribution match only fills in what's missing.
+    let utmSource = nullableString(get("utm_source"));
+    let utmMedium = nullableString(get("utm_medium"));
+    let utmCampaign = nullableString(get("utm_campaign"));
+    let utmContent = nullableString(get("utm_content"));
+    let landingName = nullableString(get("landing_name"));
+
+    if (attribution) {
+      const matched = attribution.matchMap.get(attributionMatchKey(source.sheetName, rowNumber));
+      if (matched) {
+        utmSource = utmSource ?? matched.utmSource;
+        utmMedium = utmMedium ?? matched.utmMedium;
+        utmCampaign = utmCampaign ?? matched.utmCampaign;
+        utmContent = utmContent ?? matched.utmContent;
+        landingName = landingName ?? matched.landingName;
+      }
+    }
+
     const leadKey = computeLeadKey({ appliedAtIso, phone, utmCampaign, utmContent });
 
     const outcomeRaw = nullableString(get("outcome_raw"));
@@ -84,11 +120,11 @@ export function mapSheetRows(records: Record<string, unknown>[], source: SheetRo
       source_row_number: rowNumber,
       applied_at: appliedAtIso,
       preferred_visit_at: parseSheetDateTime(get("preferred_visit_at")),
-      utm_source: nullableString(get("utm_source")),
-      utm_medium: nullableString(get("utm_medium")),
+      utm_source: utmSource,
+      utm_medium: utmMedium,
       utm_campaign: utmCampaign,
       utm_content: utmContent,
-      landing_name: nullableString(get("landing_name")),
+      landing_name: landingName,
       procedure: source.procedureLabel,
       is_valid: deriveIsValid(outcomeStatus),
       invalid_reason: outcomeStatus === "invalid" ? outcomeRaw : null,

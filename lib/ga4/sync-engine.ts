@@ -59,6 +59,13 @@ export async function runGa4Sync(options: RunGa4SyncOptions = {}): Promise<Ga4Sy
 
     const merged = mergeGa4Reports(mainRows, eventRows);
     const upsertRows = toUpsertRows(merged);
+    // No sensitive data here — just counts. Confirms the storage-key
+    // (date+campaign+content+landing_page) dedup is collapsing exactly the
+    // rows GA4's extra source/medium breakdown produced, before they ever
+    // reach a single upsert() call.
+    console.log(
+      `[GA4 sync] ${syncDate}: raw ${mainRows.length}, deduped ${upsertRows.length}, duplicate keys ${mainRows.length - upsertRows.length}`
+    );
     const { inserted, updated } = await upsertGa4DailyRows(upsertRows);
 
     await recordGa4SyncHistory({

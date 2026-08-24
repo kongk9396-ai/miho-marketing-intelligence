@@ -11,7 +11,7 @@ export interface ResolvedPeriod {
   label: string;
 }
 
-function kstDateOnlyToInstantIso(dateOnly: string): string {
+export function kstDateOnlyToInstantIso(dateOnly: string): string {
   return new Date(`${dateOnly}T00:00:00+09:00`).toISOString();
 }
 

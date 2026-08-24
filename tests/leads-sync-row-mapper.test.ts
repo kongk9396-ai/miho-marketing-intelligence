@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { mapSheetRows } from "@/lib/leads-sync/row-mapper";
+import { attributionMatchKey } from "@/lib/leads-sync/attribution-repository";
+import type { AttributionRecord } from "@/lib/leads-sync/attribution-repository";
+
+function attributionRecord(overrides: Partial<AttributionRecord> = {}): AttributionRecord {
+  return {
+    sourceSheet: "코첫",
+    sourceRow: 2,
+    submittedAt: null,
+    landingName: null,
+    utmSource: null,
+    utmMedium: null,
+    utmCampaign: null,
+    utmContent: null,
+    resultStatus: null,
+    bookingStatus: null,
+    ...overrides,
+  };
+}
 
 const baseRecord: Record<string, unknown> = {
   신청날짜: "2026-08-20",
@@ -99,6 +117,69 @@ describe("mapSheetRows — 중복 방지 (idempotent 재동기화)", () => {
     expect(after.lead_key).toBe(before.lead_key);
     expect(after.outcome_status).toBe("cancelled");
     expect(before.outcome_status).toBe("confirmed");
+  });
+});
+
+describe("mapSheetRows — DBcart 어트리뷰션 매칭 (attribution)", () => {
+  // Mirrors the real "코첫" sheet shape — no utm_* columns at all.
+  const noUtmRecord: Record<string, unknown> = {
+    신청날짜: "2026-08-20",
+    이름: "홍길동",
+    생년월일: "1990-01-01",
+    연락처: "010-1234-5678",
+    최종결과: "예약",
+    담당자: "김상담",
+    "콜 결과(1차)": "통화완료",
+  };
+
+  it("attribution이 없으면 utm 필드는 null로 유지된다 (추측하지 않음)", () => {
+    const { rows } = mapSheetRows([noUtmRecord], source);
+    expect(rows[0].utm_campaign).toBeNull();
+    expect(rows[0].utm_content).toBeNull();
+  });
+
+  it("(시트명, 행번호)가 attribution 탭에 있으면 utm 값을 채운다", () => {
+    // noUtmRecord is the only row, so its sheet row number is 2 (header + 1-indexed).
+    const key = attributionMatchKey("코첫", 2);
+    const matchMap = new Map([
+      [key, attributionRecord({ landingName: "첫코 랜딩", utmSource: "meta", utmMedium: "paid_social", utmCampaign: "firstnose", utmContent: "creative_a" })],
+    ]);
+
+    const { rows } = mapSheetRows([noUtmRecord], source, { matchMap });
+    expect(rows[0].utm_campaign).toBe("firstnose");
+    expect(rows[0].utm_content).toBe("creative_a");
+    expect(rows[0].utm_source).toBe("meta");
+    expect(rows[0].landing_name).toBe("첫코 랜딩");
+  });
+
+  it("(시트명, 행번호)가 attribution 탭에 없으면 (미매칭) 추측하지 않고 null로 남긴다", () => {
+    const matchMap = new Map<string, AttributionRecord>(); // no rows at all
+    const { rows } = mapSheetRows([noUtmRecord], source, { matchMap });
+    expect(rows[0].utm_campaign).toBeNull();
+  });
+
+  it("다른 시트/행 번호의 attribution 행은 매칭되지 않는다", () => {
+    const matchMap = new Map([[attributionMatchKey("눈", 2), attributionRecord({ sourceSheet: "눈", utmCampaign: "다른캠페인" })]]);
+    const { rows } = mapSheetRows([noUtmRecord], source, { matchMap }); // source.sheetName === "코첫", not "눈"
+    expect(rows[0].utm_campaign).toBeNull();
+  });
+
+  it("상담 시트 자체에 이미 utm 컬럼이 있으면 attribution 매칭보다 그 값을 우선한다", () => {
+    const key = attributionMatchKey("코첫", 2);
+    const matchMap = new Map([[key, attributionRecord({ utmCampaign: "attribution_campaign", utmContent: "attribution_content" })]]);
+
+    const { rows } = mapSheetRows([baseRecord], source, { matchMap }); // baseRecord already has utm_campaign: "여름세일"
+    expect(rows[0].utm_campaign).toBe("여름세일");
+  });
+
+  it("attribution으로 채워진 utm 값도 lead_key 계산에 반영된다 (서로 다른 매칭 결과는 다른 lead_key)", () => {
+    const key = attributionMatchKey("코첫", 2);
+    const withoutAttribution = mapSheetRows([noUtmRecord], source).rows[0];
+    const withAttribution = mapSheetRows([noUtmRecord], source, {
+      matchMap: new Map([[key, attributionRecord({ utmCampaign: "firstnose", utmContent: "creative_a" })]]),
+    }).rows[0];
+
+    expect(withAttribution.lead_key).not.toBe(withoutAttribution.lead_key);
   });
 });
 

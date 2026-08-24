@@ -90,6 +90,19 @@ export interface MetaDailyLike {
   avg_watch_time: number | null;
 }
 
+/**
+ * MetaDailyLike plus the raw per-row rate columns Meta itself reports
+ * (ctr/cpc/etc.). Used only where a raw-count-based recompute needs a
+ * fallback to Meta's own reported rate — see lib/ad-diagnosis/meta-rate-fallback.ts.
+ */
+export interface MetaDailyWithRates extends MetaDailyLike {
+  ctr: number | null;
+  link_ctr: number | null;
+  cpc: number | null;
+  link_cpc: number | null;
+  cpm: number | null;
+}
+
 export interface PeriodMetrics {
   dayCount: number;
   totalSpend: number;
