@@ -516,7 +516,62 @@ export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary>
     adVideoFunnels,
     creativeChange,
     landingChange,
-    landingChangeHistory: [],
+    landingChangeHistory: landingChange.available && landingChange.change
+      ? [
+          {
+            id: landingChange.change.id,
+            landingName: landingChange.change.adName ?? "랜딩페이지",
+            changedAt: landingChange.change.changedAt,
+            changeTypeLabel: landingChange.change.changeTypeLabel,
+            oldVersion: null,
+            newVersion: null,
+            memo: null,
+            linkedCampaignNames: [],
+            beforePeriod: landingChange.dbBefore
+              ? {
+                  start: "",
+                  end: "",
+                  dayCount: 1,
+                }
+              : null,
+            afterPeriod: landingChange.dbAfter
+              ? {
+                  start: "",
+                  end: "",
+                  dayCount: 1,
+                }
+              : null,
+            beforeDb: landingChange.dbBefore
+              ? {
+                  totalDb: landingChange.dbBefore.totalLeads,
+                  validDb: landingChange.dbBefore.validLeads,
+                  confirmedBookings: landingChange.dbBefore.confirmedBookings,
+                  dailyAvgDb: landingChange.dbBefore.totalLeads,
+                  bookingRate:
+                    landingChange.dbBefore.totalLeads > 0
+                      ? (landingChange.dbBefore.confirmedBookings /
+                          landingChange.dbBefore.totalLeads) *
+                        100
+                      : null,
+                }
+              : null,
+            afterDb: landingChange.dbAfter
+              ? {
+                  totalDb: landingChange.dbAfter.totalLeads,
+                  validDb: landingChange.dbAfter.validLeads,
+                  confirmedBookings: landingChange.dbAfter.confirmedBookings,
+                  dailyAvgDb: landingChange.dbAfter.totalLeads,
+                  bookingRate:
+                    landingChange.dbAfter.totalLeads > 0
+                      ? (landingChange.dbAfter.confirmedBookings /
+                          landingChange.dbAfter.totalLeads) *
+                        100
+                      : null,
+                }
+              : null,
+          },
+        ]
+      : [],
     fullFunnel,
     adDiagnosisGroups: adGroups,
     campaigns,
@@ -526,6 +581,10 @@ export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary>
     roasNote: "매출 데이터 연동 후 ROAS 분석 예정",
   };
 }
+
+
+
+
 
 
 
