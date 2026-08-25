@@ -300,9 +300,43 @@ export function TomorrowSummaryCard({
       </section>
     ) : null}
 
-    <section className="mb-5 grid gap-4 lg:grid-cols-3">
+    <section className="mb-5 grid gap-4 lg:grid-cols-4">
 
-  <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+  <div className="rounded-xl border border-violet-200 bg-violet-50 p-5">
+  <p className="mb-2 text-xs font-semibold text-violet-600">
+    예상 성과
+  </p>
+
+  <h3 className="text-lg font-bold text-gray-900">
+    월 예상 DB 약 54건
+  </h3>
+
+  <p className="mt-1 text-sm text-gray-600">
+    최근 5일 DB 9건 기준
+  </p>
+
+  <p className="mt-3 text-xs leading-5 text-gray-500">
+    일평균 1.8건 × 30일 단순 환산
+  </p>
+</div>
+<div className="rounded-xl border border-violet-200 bg-violet-50 p-5">
+  <p className="mb-2 text-xs font-semibold text-violet-600">
+    예상 성과
+  </p>
+
+  <h3 className="text-lg font-bold text-gray-900">
+    월 예상 DB 약 54건
+  </h3>
+
+  <p className="mt-1 text-sm text-gray-600">
+    최근 5일 DB 9건 기준
+  </p>
+
+  <p className="mt-3 text-xs leading-5 text-gray-500">
+    일평균 1.8건 × 30일 단순 환산
+  </p>
+</div>
+<div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
     <p className="mb-2 text-xs font-semibold text-blue-600">
       운영 현황
     </p>
@@ -461,6 +495,9 @@ export function TomorrowSummaryCard({
     </>
   );
 }
+
+
+
 
 
 
