@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { throwSupabaseError } from "@/lib/meta/schema-not-ready";
 import type {
@@ -57,7 +57,40 @@ export async function upsertLeads(rows: LeadUpsertRow[]): Promise<UpsertResult> 
   if (rows.length === 0) return { inserted: 0, updated: 0 };
 
   const supabase = getSupabaseServiceRoleClient();
-  const leadKeys = rows.map((r) => r.lead_key);
+
+  // Existing sheet rows must keep their original lead_key even when
+  // attribution/UTM values are added later. source + source_row_number is
+  // the stable consultation-sheet identity.
+  const sources = [...new Set(rows.map((r) => r.source).filter(Boolean))];
+
+  const { data: existingSourceRows, error: sourceLookupError } = await supabase
+    .from("leads")
+    .select("lead_key, source, source_row_number")
+    .in("source", sources);
+
+  if (sourceLookupError) throwSupabaseError("leads 기존 행 조회", sourceLookupError);
+
+  const existingBySourceRow = new Map<string, string>();
+
+  for (const row of existingSourceRows ?? []) {
+    if (!row.source || row.source_row_number == null) continue;
+    existingBySourceRow.set(
+      `${row.source}|||${row.source_row_number}`,
+      row.lead_key as string
+    );
+  }
+
+  const resolvedRows = rows.map((row) => {
+    const existingKey = existingBySourceRow.get(
+      `${row.source}|||${row.source_row_number}`
+    );
+
+    return existingKey
+      ? { ...row, lead_key: existingKey }
+      : row;
+  });
+
+  const leadKeys = resolvedRows.map((r) => r.lead_key);
 
   const { data: existingRows, error: lookupError } = await supabase
     .from("leads")
@@ -66,19 +99,29 @@ export async function upsertLeads(rows: LeadUpsertRow[]): Promise<UpsertResult> 
 
   if (lookupError) throwSupabaseError("leads 조회", lookupError);
 
-  const existingKeys = new Set((existingRows ?? []).map((r) => r.lead_key as string));
-  const updated = rows.filter((r) => existingKeys.has(r.lead_key)).length;
-  const inserted = rows.length - updated;
+  const existingKeys = new Set(
+    (existingRows ?? []).map((r) => r.lead_key as string)
+  );
+
+  const updated = resolvedRows.filter((r) =>
+    existingKeys.has(r.lead_key)
+  ).length;
+  const inserted = resolvedRows.length - updated;
 
   const now = new Date().toISOString();
-  const payload = rows.map((row) => ({ ...row, synced_at: now }));
+  const payload = resolvedRows.map((row) => ({
+    ...row,
+    synced_at: now,
+  }));
 
-  const { error: upsertError } = await supabase.from("leads").upsert(payload, { onConflict: "lead_key" });
+  const { error: upsertError } = await supabase
+    .from("leads")
+    .upsert(payload, { onConflict: "lead_key" });
+
   if (upsertError) throwSupabaseError("leads 저장", upsertError);
 
   return { inserted, updated };
 }
-
 export async function getLatestLeadsAppliedAt(): Promise<string | null> {
   const supabase = getSupabaseServiceRoleClient();
   const { data, error } = await supabase
@@ -113,3 +156,4 @@ export async function getLatestLeadsSyncHistory(limit = 20): Promise<LeadsSyncHi
   if (error) throwSupabaseError("DB 동기화 이력 조회", error);
   return (data ?? []) as LeadsSyncHistoryRecord[];
 }
+

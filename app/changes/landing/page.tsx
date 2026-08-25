@@ -1,13 +1,19 @@
-import { PageHeader } from "@/components/layout/page-header";
+﻿import { PageHeader } from "@/components/layout/page-header";
 import { RegisterLandingChangeForm } from "@/components/landing-changes/register-change-form";
 import { LandingChangeListTable } from "@/components/landing-changes/change-list-table";
-import { getDistinctLandingPages, listLandingChanges } from "@/lib/landing-changes/repository";
+import { getDistinctLandingPages, getLandingChangeById, listLandingChanges } from "@/lib/landing-changes/repository";
 import { getMetaAdHierarchy } from "@/lib/creative-changes/repository";
 import { SchemaNotReadyError } from "@/lib/meta/schema-not-ready";
 
 export const dynamic = "force-dynamic";
 
-export default async function LandingChangesPage() {
+export default async function LandingChangesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string }>;
+}) {
+  const params = await searchParams;
+  const editId = params.edit ?? null;
   const header = (
     <PageHeader title="랜딩 변경" description="랜딩 페이지 개편 이력을 등록하고 전후 GA4 성과를 비교합니다." />
   );
@@ -37,14 +43,18 @@ export default async function LandingChangesPage() {
 
   const campaignNames = [...new Set(hierarchy.map((r) => r.campaignName).filter((n): n is string => !!n))];
 
+  const editingChange = editId
+    ? await getLandingChangeById(editId)
+    : null;
+
   return (
     <>
       {header}
 
       <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h3 className="text-sm font-semibold text-gray-900">변경 이력 등록</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{editingChange ? "변경 이력 수정" : "변경 이력 등록"}</h3>
         <div className="mt-4">
-          <RegisterLandingChangeForm landingPages={landingPages} campaignNames={campaignNames} />
+          <RegisterLandingChangeForm landingPages={landingPages} campaignNames={campaignNames} initialChange={editingChange} />
         </div>
       </div>
 
@@ -54,3 +64,4 @@ export default async function LandingChangesPage() {
     </>
   );
 }
+

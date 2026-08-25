@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+﻿import { createHash } from "node:crypto";
 
 /** Digits only — "010-1234-5678" and "010 1234 5678" hash identically. */
 export function normalizePhone(raw: string | null | undefined): string {
@@ -7,7 +7,7 @@ export function normalizePhone(raw: string | null | undefined): string {
 
 /**
  * Stable dedup key for a sheet row with no configured stable id column.
- * Built from the business date + normalized phone + UTM pair, never from
+ * Built from the business date + normalized phone, never from
  * the raw phone digits alone — this value is what gets stored (as
  * lead_key), the phone itself never is. See docs on
  * lib/leads-sync/header-aliases.ts's `phone` alias for why phone is read at
@@ -20,7 +20,7 @@ export function computeLeadKey(input: {
   utmContent: string | null | undefined;
 }): string {
   const normalizedPhone = normalizePhone(input.phone);
-  const parts = [input.appliedAtIso, normalizedPhone, input.utmCampaign ?? "", input.utmContent ?? ""];
+  const parts = [input.appliedAtIso, normalizedPhone];
   return createHash("sha256").update(parts.join("|")).digest("hex");
 }
 
@@ -28,3 +28,4 @@ export function computeLeadKey(input: {
 export function computeLeadKeyFromSourceId(sourceRowId: string): string {
   return createHash("sha256").update(`source_id:${sourceRowId}`).digest("hex");
 }
+

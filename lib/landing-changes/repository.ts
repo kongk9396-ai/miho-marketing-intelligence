@@ -1,8 +1,8 @@
-import "server-only";
+﻿import "server-only";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { throwSupabaseError } from "@/lib/meta/schema-not-ready";
 import { getGa4DailyRows } from "@/lib/ga4/repository";
-import { getLeadsInRange } from "@/lib/leads-analysis/repository";
+import { getLeadsByKstDateRange, getLeadsInRange } from "@/lib/leads-analysis/repository";
 import type { Ga4DailyLike } from "@/lib/ga4/types";
 import type { LeadAnalysisRow } from "@/lib/leads-analysis/types";
 import type { LandingChangeInput, LandingChangeRecord } from "@/lib/landing-changes/types";
@@ -33,6 +33,31 @@ export async function insertLandingChange(input: LandingChangeInput): Promise<La
 
   if (error) throwSupabaseError("랜딩 변경 이력 저장", error);
   return data as LandingChangeRecord;
+}
+export async function updateLandingChange(
+  id: string,
+  input: LandingChangeInput
+): Promise<LandingChangeRecord> {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .from("landing_changes")
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) throwSupabaseError("랜딩 변경 이력 수정", error);
+  return data as LandingChangeRecord;
+}
+
+export async function deleteLandingChange(id: string): Promise<void> {
+  const supabase = getSupabaseServiceRoleClient();
+  const { error } = await supabase
+    .from("landing_changes")
+    .delete()
+    .eq("id", id);
+
+  if (error) throwSupabaseError("랜딩 변경 이력 삭제", error);
 }
 
 /** Distinct landing_page values seen in ga4_daily, for the registration form's pattern picker. */
@@ -88,14 +113,65 @@ export async function resolveUtmCampaignsForCampaignName(campaignName: string): 
  * Returns null (never an empty array standing in for "no data") when no
  * campaign is linked — the caller must show "DB 귀속 불가", not 0 counts.
  */
+export function parseLinkedCampaignNames(value: string | null): string[] {
+  if (!value) return [];
+
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((v) => String(v).trim())
+          .filter(Boolean);
+      }
+    } catch {
+      // fall through to legacy single-campaign value
+    }
+  }
+
+  return [trimmed];
+}
+
 export async function getLeadsForLinkedCampaign(
   linkedCampaignName: string | null,
   startIso: string,
   endIsoExclusive: string
 ): Promise<LeadAnalysisRow[] | null> {
-  if (!linkedCampaignName) return null;
+  const linkedCampaignNames = parseLinkedCampaignNames(linkedCampaignName);
+  if (linkedCampaignNames.length === 0) return null;
 
-  const utmCampaigns = await resolveUtmCampaignsForCampaignName(linkedCampaignName);
+  const resolved = await Promise.all(
+    linkedCampaignNames.map((campaignName) =>
+      resolveUtmCampaignsForCampaignName(campaignName)
+    )
+  );
+
+  const utmCampaigns = new Set(
+    resolved.flat().map((value) => value.trim().toLowerCase())
+  );
+
   const rows = await getLeadsInRange(startIso, endIsoExclusive);
-  return rows.filter((r) => r.utm_campaign !== null && utmCampaigns.includes(r.utm_campaign));
+
+  return rows.filter((row) => {
+    if (!row.utm_campaign) return false;
+    return utmCampaigns.has(row.utm_campaign.trim().toLowerCase());
+  });
 }
+
+export async function getLeadsForLandingPeriod(
+  startIso: string,
+  endIsoExclusive: string
+): Promise<LeadAnalysisRow[]> {
+  return getLeadsInRange(startIso, endIsoExclusive);
+}
+
+export async function getLeadsForLandingDateRange(
+  startDate: string,
+  endDate: string
+): Promise<LeadAnalysisRow[]> {
+  return getLeadsByKstDateRange(startDate, endDate);
+}
+

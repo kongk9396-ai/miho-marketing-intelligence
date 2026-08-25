@@ -1,8 +1,8 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import { findActiveObservationConflict } from "@/lib/creative-changes/conflict-check";
-import { getRecentChangesForAdOrCampaign, insertCreativeChange } from "@/lib/creative-changes/repository";
+import { deleteCreativeChange, getRecentChangesForAdOrCampaign, insertCreativeChange, updateCreativeChange } from "@/lib/creative-changes/repository";
 import { CHANGE_TYPES, type ChangeType, type CreativeChangeInput } from "@/lib/creative-changes/types";
 import type { RegisterChangeFormState } from "@/app/changes/creative/action-state";
 
@@ -98,4 +98,35 @@ function parseFormInput(
       forced: false,
     },
   };
+}
+
+export async function updateCreativeChangeAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { status: "error", message: "수정할 소재 변경 ID가 없습니다." };
+
+  const parsed = parseFormInput(formData);
+  if (!parsed.ok) return { status: "error", message: parsed.error };
+
+  try {
+    await updateCreativeChange(id, parsed.value);
+    revalidatePath("/changes/creative");
+    revalidatePath("/ads/before-after");
+    revalidatePath("/report");
+    return { status: "success", message: "소재 변경 이력이 수정되었습니다." };
+  } catch (err) {
+    return {
+      status: "error",
+      message: err instanceof Error ? err.message : "수정 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function deleteCreativeChangeAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return;
+
+  await deleteCreativeChange(id);
+  revalidatePath("/changes/creative");
+  revalidatePath("/ads/before-after");
+  revalidatePath("/report");
 }

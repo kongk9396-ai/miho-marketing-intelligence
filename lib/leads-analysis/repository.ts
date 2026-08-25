@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { throwSupabaseError } from "@/lib/meta/schema-not-ready";
 import type { LeadAnalysisRow } from "@/lib/leads-analysis/types";
@@ -82,4 +82,17 @@ export async function getAllLeadsForAnalysis(): Promise<LeadAnalysisRow[]> {
     from += PAGE_SIZE;
   }
   return rows;
+}
+
+export async function getLeadsByKstDateRange(
+  startDate: string,
+  endDate: string
+): Promise<LeadAnalysisRow[]> {
+  const startIso = new Date(`${startDate}T00:00:00+09:00`).toISOString();
+
+  const end = new Date(`${endDate}T00:00:00+09:00`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  const endIsoExclusive = end.toISOString();
+
+  return getLeadsInRange(startIso, endIsoExclusive);
 }

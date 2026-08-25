@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Google Sheet header text -> internal canonical field name. Sheet owners
  * can rename columns at any time, so nothing downstream matches on a raw
  * header string directly — mirrors lib/meta/header-aliases.ts's pattern for
@@ -32,10 +32,10 @@ export const LEADS_HEADER_ALIASES: Record<string, string[]> = {
   call_result_2: ["콜결과2차", "2차콜결과", "콜 결과(2차)", "콜결과(2차)", "2차 콜 결과"],
   call_result_3: ["콜결과3차", "3차콜결과", "콜 결과(3차)", "콜결과(3차)", "3차 콜 결과"],
   call_result_4: ["콜결과4차", "4차콜결과", "콜 결과(4차)", "콜결과(4차)", "4차 콜 결과"],
-  utm_source: ["utm_source", "출처"],
-  utm_medium: ["utm_medium", "매체"],
-  utm_campaign: ["utm_campaign", "캠페인"],
-  utm_content: ["utm_content", "소재", "콘텐츠"],
+  utm_source: ["utm_source", "utm_source(출처)", "출처"],
+  utm_medium: ["utm_medium", "utm_medium(매체)", "매체"],
+  utm_campaign: ["utm_campaign", "utm_campaign(캠페인)", "캠페인"],
+  utm_content: ["utm_content", "utm_content(콘텐츠)", "소재", "콘텐츠"],
   landing_name: ["랜딩", "랜딩페이지", "랜딩 페이지", "유입경로", "유입 경로", "유입", "랜딩타이틀"],
 };
 
@@ -81,3 +81,4 @@ export function resolveLeadsHeaderMap(
 
   return resolved;
 }
+

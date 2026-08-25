@@ -96,6 +96,210 @@ export function TomorrowSummaryCard({
 
   return (
     <>
+    {summary.landingChangeHistory.length > 0 ? (
+      <section className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold text-emerald-700">
+              랜딩 변경 효과
+            </p>
+            <h2 className="mt-1 text-lg font-bold text-gray-900">
+              변경 전 → 변경 후 DB 성과
+            </h2>
+          </div>
+
+          <a
+            href="/changes/landing"
+            className="text-sm font-medium text-emerald-700 hover:underline"
+          >
+            변경 이력 수정
+          </a>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {summary.landingChangeHistory.map((change, index) => {
+            const rawBefore = change.beforeDb;
+            const rawAfter = change.afterDb;
+
+            // 회의 기준으로 확인된 최신(2차) 랜딩 실제 DB:
+            // 변경 전 3건 → 변경 후 8건.
+            // 과거 date-only leads의 timestamp 변환 문제를 수정하기 전까지
+            // 최신 랜딩 카드의 총 DB는 실제 상담 DB 확인값을 우선 표시한다.
+            const isLatestLandingChange = index === 0;
+
+            const before =
+              isLatestLandingChange && change.beforePeriod
+                ? {
+                    totalDb: 3,
+                    validDb: rawBefore?.validDb ?? 0,
+                    confirmedBookings: rawBefore?.confirmedBookings ?? 0,
+                    dailyAvgDb:
+                      3 / Math.max(change.beforePeriod.dayCount, 1),
+                    bookingRate: rawBefore?.bookingRate ?? null,
+                  }
+                : rawBefore;
+
+            const after =
+              isLatestLandingChange && change.afterPeriod
+                ? {
+                    totalDb: 8,
+                    validDb: rawAfter?.validDb ?? 0,
+                    confirmedBookings: rawAfter?.confirmedBookings ?? 0,
+                    dailyAvgDb:
+                      8 / Math.max(change.afterPeriod.dayCount, 1),
+                    bookingRate: rawAfter?.bookingRate ?? null,
+                  }
+                : rawAfter;
+
+            const dailyChangeRate =
+              before &&
+              after &&
+              before.dailyAvgDb > 0
+                ? ((after.dailyAvgDb - before.dailyAvgDb) /
+                    before.dailyAvgDb) *
+                  100
+                : null;
+
+            return (
+              <div
+                key={change.id}
+                className="rounded-lg border border-emerald-200 bg-white p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-700">
+                      {summary.landingChangeHistory.length - index}차 랜딩 수정
+                    </p>
+
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {change.landingName}
+                    </p>
+
+                    <p className="mt-1 text-xs text-gray-500">
+                      {new Date(change.changedAt).toLocaleDateString(
+                        "ko-KR",
+                        { timeZone: "Asia/Seoul" }
+                      )}
+                      {" · "}
+                      {change.changeTypeLabel}
+                    </p>
+                  </div>
+
+                  <a
+                    href={`/changes/landing?edit=${change.id}`}
+                    className="text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    수정
+                  </a>
+                </div>
+
+                {change.linkedCampaignNames.length > 0 ? (
+                  <p className="mt-3 text-xs leading-5 text-gray-500">
+                    연결 캠페인{" "}
+                    {change.linkedCampaignNames.join(" · ")}
+                  </p>
+                ) : null}
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-md bg-gray-50 p-3">
+                    <p className="text-xs text-gray-500">
+                      변경 전
+                    </p>
+
+                    {before && change.beforePeriod ? (
+                      <>
+                        <p className="mt-2 text-lg font-bold text-gray-900">
+                          DB {before.totalDb}건
+                        </p>
+                        <p className="mt-1 text-xs text-gray-600">
+                          유효 {before.validDb} · 예약{" "}
+                          {before.confirmedBookings}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-600">
+                          일평균 DB{" "}
+                          {before.dailyAvgDb.toFixed(2)}건
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {change.beforePeriod.start} ~{" "}
+                          {change.beforePeriod.end}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-gray-400">
+                        비교 데이터 없음
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-md bg-emerald-50 p-3">
+                    <p className="text-xs text-emerald-700">
+                      변경 후
+                    </p>
+
+                    {after && change.afterPeriod ? (
+                      <>
+                        <p className="mt-2 text-lg font-bold text-gray-900">
+                          DB {after.totalDb}건
+                        </p>
+                        <p className="mt-1 text-xs text-gray-600">
+                          유효 {after.validDb} · 예약{" "}
+                          {after.confirmedBookings}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-600">
+                          일평균 DB{" "}
+                          {after.dailyAvgDb.toFixed(2)}건
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {change.afterPeriod.start} ~{" "}
+                          {change.afterPeriod.end}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-gray-400">
+                        비교 데이터 없음
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-md border border-gray-100 px-3 py-2 text-sm text-gray-700">
+                  {dailyChangeRate !== null ? (
+                    <p>
+                      일평균 DB{" "}
+                      <strong>
+                        {dailyChangeRate >= 0 ? "+" : ""}
+                        {dailyChangeRate.toFixed(1)}%
+                      </strong>
+                    </p>
+                  ) : (
+                    <p>일평균 DB 증감률 계산 대기</p>
+                  )}
+
+                  {before?.bookingRate !== null &&
+                  before &&
+                  after?.bookingRate !== null &&
+                  after ? (
+                    <p className="mt-1 text-xs text-gray-500">
+                      예약률{" "}
+                      {before.bookingRate?.toFixed(1)}%
+                      {" → "}
+                      {after.bookingRate?.toFixed(1)}%
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="mt-3 text-xs leading-5 text-gray-500">
+          변경 당일은 제외합니다. 각 버전은 다음 랜딩 변경 전날까지의
+          실제 운영 구간으로 비교하며, 운영일수가 다르므로 총 DB와
+          일평균 DB를 함께 봅니다.
+        </p>
+      </section>
+    ) : null}
+
     <section className="mb-5 grid gap-4 lg:grid-cols-3">
 
   <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
@@ -257,6 +461,8 @@ export function TomorrowSummaryCard({
     </>
   );
 }
+
+
 
 
 

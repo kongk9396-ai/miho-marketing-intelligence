@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { throwSupabaseError } from "@/lib/meta/schema-not-ready";
 import type {
@@ -42,6 +42,31 @@ export async function insertCreativeChange(input: CreativeChangeInput): Promise<
 
   if (error) throwSupabaseError("변경 이력 저장", error);
   return data as CreativeChangeRecord;
+}
+export async function updateCreativeChange(
+  id: string,
+  input: CreativeChangeInput
+): Promise<CreativeChangeRecord> {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .from("creative_changes")
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) throwSupabaseError("변경 이력 수정", error);
+  return data as CreativeChangeRecord;
+}
+
+export async function deleteCreativeChange(id: string): Promise<void> {
+  const supabase = getSupabaseServiceRoleClient();
+  const { error } = await supabase
+    .from("creative_changes")
+    .delete()
+    .eq("id", id);
+
+  if (error) throwSupabaseError("변경 이력 삭제", error);
 }
 
 /** Recent changes touching this ad or campaign, for the conflict check (section 3). */
@@ -217,3 +242,4 @@ export async function getMetaAdHierarchy(): Promise<AdHierarchyRow[]> {
   }
   return [...seen.values()];
 }
+

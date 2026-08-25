@@ -1,7 +1,7 @@
-﻿import { LEADS_REQUIRED_FIELDS, resolveLeadsHeaderMap } from "@/lib/leads-sync/header-aliases";
+import { LEADS_REQUIRED_FIELDS, resolveLeadsHeaderMap } from "@/lib/leads-sync/header-aliases";
 import { parseSheetDateTime } from "@/lib/leads-sync/parse-date";
 import { computeLeadKey } from "@/lib/leads-sync/lead-key";
-import { attributionMatchKey, attributionSubmittedAtKey } from "@/lib/leads-sync/attribution-repository";
+import { attributionMatchKey } from "@/lib/leads-sync/attribution-repository";
 import {
   deriveBookingStatus,
   deriveIsValid,
@@ -93,10 +93,7 @@ export function mapSheetRows(
     let landingName = nullableString(get("landing_name"));
 
     if (attribution) {
-      const matched =
-        attribution.matchMap.get(attributionMatchKey(source.sheetName, rowNumber)) ??
-        attribution.matchMap.get(attributionSubmittedAtKey(appliedAtIso));
-
+      const matched = attribution.matchMap.get(attributionMatchKey(source.sheetName, rowNumber));
       if (matched) {
         utmSource = utmSource ?? matched.utmSource;
         utmMedium = utmMedium ?? matched.utmMedium;
@@ -144,4 +141,3 @@ export function mapSheetRows(
 
   return { rows, skipped };
 }
-

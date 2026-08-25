@@ -1,7 +1,7 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
-import { insertLandingChange } from "@/lib/landing-changes/repository";
+import { deleteLandingChange, insertLandingChange, updateLandingChange } from "@/lib/landing-changes/repository";
 import { LANDING_CHANGE_TYPES, type LandingChangeInput, type LandingChangeType } from "@/lib/landing-changes/types";
 import type { RegisterLandingChangeFormState } from "@/app/changes/landing/action-state";
 
@@ -32,8 +32,16 @@ function parseFormInput(
   formData: FormData
 ): { ok: true; value: LandingChangeInput } | { ok: false; error: string } {
   const landingName = String(formData.get("landingName") ?? "").trim();
-  const landingPagePattern = String(formData.get("landingPagePattern") ?? "").trim() || null;
-  const linkedCampaignName = String(formData.get("linkedCampaignName") ?? "").trim() || null;
+  const landingPagePattern = null;
+  const linkedCampaignNames = formData
+    .getAll("linkedCampaignNames")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  const linkedCampaignName =
+    linkedCampaignNames.length > 0
+      ? JSON.stringify(linkedCampaignNames)
+      : null;
   const changedAtRaw = String(formData.get("changedAt") ?? "").trim();
   const changeType = String(formData.get("changeType") ?? "");
   const oldVersion = String(formData.get("oldVersion") ?? "").trim() || null;
@@ -80,3 +88,39 @@ function parseFormInput(
     },
   };
 }
+
+export async function updateLandingChangeAction(
+  _prevState: RegisterLandingChangeFormState,
+  formData: FormData
+): Promise<RegisterLandingChangeFormState> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { status: "error", message: "수정할 랜딩 변경 ID가 없습니다." };
+
+  const parsed = parseFormInput(formData);
+  if (!parsed.ok) return { status: "error", message: parsed.error };
+
+  try {
+    await updateLandingChange(id, parsed.value);
+    revalidatePath("/changes/landing");
+    revalidatePath("/landing/before-after");
+    revalidatePath("/report");
+    return { status: "success", message: "랜딩 변경 이력이 수정되었습니다." };
+  } catch (err) {
+    return {
+      status: "error",
+      message: err instanceof Error ? err.message : "수정 중 오류가 발생했습니다.",
+    };
+  }
+}
+
+export async function deleteLandingChangeAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return;
+
+  await deleteLandingChange(id);
+  revalidatePath("/changes/landing");
+  revalidatePath("/landing/before-after");
+  revalidatePath("/report");
+}
+
+

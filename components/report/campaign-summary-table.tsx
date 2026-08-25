@@ -1,4 +1,4 @@
-import { formatCount, formatWon } from "@/lib/dashboard/format";
+﻿import { formatCount, formatWon } from "@/lib/dashboard/format";
 import type { CampaignReportSummary } from "@/lib/ad-performance-summary/types";
 
 export function CampaignSummaryTable({ campaigns }: { campaigns: CampaignReportSummary[] }) {
@@ -39,7 +39,7 @@ export function CampaignSummaryTable({ campaigns }: { campaigns: CampaignReportS
               <dd className="font-medium text-gray-900">
                 {c.db.available
                   ? `${formatCount(c.db.totalDb ?? 0)}건 / ${formatCount(c.db.confirmedBookings ?? 0)}건`
-                  : "UTM 미수집으로 귀속 불가"}
+                  : "UTM 매핑 미등록"}
               </dd>
             </div>
             <div>
@@ -60,3 +60,4 @@ export function CampaignSummaryTable({ campaigns }: { campaigns: CampaignReportS
     </div>
   );
 }
+

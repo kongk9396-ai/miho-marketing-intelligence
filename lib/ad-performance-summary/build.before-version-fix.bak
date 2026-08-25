@@ -1,4 +1,4 @@
-﻿import "server-only";
+import "server-only";
 import {
   getMetaCampaignDailyRowsInRange,
   getMetaDailyRowsInRange,
@@ -134,41 +134,10 @@ async function buildCreativeChangeSection(): Promise<CreativeChangeSection> {
     };
   }
 
-  // 랜딩 변경 효과는 UTM이 아니라 실제 leads 원본 DB로 계산
-  const allLandingLeads = await getAllLeadsForAnalysis();
-
-  // 최신 변경 직전의 변경일을 가져와 중간 기간만 비교
-  const landingChangesForDb = await listLandingChanges(2);
-  const previousLandingChange = landingChangesForDb[1] ?? null;
-
-  const latestLandingDate = toKstDateOnly(latest.changed_at);
-
-  const previousLandingDate = previousLandingChange
-    ? toKstDateOnly(previousLandingChange.changed_at)
-    : null;
-
-  const yesterday = addDaysToDateOnly(
-    toKstDateOnly(new Date().toISOString()),
-    -1
-  );
-
-  const dbBeforeStart = previousLandingDate
-    ? addDaysToDateOnly(previousLandingDate, 1)
-    : periods.before.start;
-
-  const dbBeforeEnd = addDaysToDateOnly(latestLandingDate, -1);
-  const dbAfterStart = addDaysToDateOnly(latestLandingDate, 1);
-  const dbAfterEnd = yesterday;
-
-  const dbBeforeRows = allLandingLeads.filter((lead: LeadAnalysisRow) => {
-    const appliedDate = toKstDateOnly(lead.applied_at);
-    return appliedDate >= dbBeforeStart && appliedDate <= dbBeforeEnd;
-  });
-
-  const dbAfterRows = allLandingLeads.filter((lead: LeadAnalysisRow) => {
-    const appliedDate = toKstDateOnly(lead.applied_at);
-    return appliedDate >= dbAfterStart && appliedDate <= dbAfterEnd;
-  });
+  const [dbBeforeRows, dbAfterRows] = await Promise.all([
+    getLeadsForCampaignContent(resolved.utmCampaign, resolved.utmContent, kstDateOnlyToInstantIso(periods.before.start), kstDateOnlyToInstantIso(addDaysToDateOnly(periods.before.end, 1))),
+    getLeadsForCampaignContent(resolved.utmCampaign, resolved.utmContent, kstDateOnlyToInstantIso(periods.after.start), kstDateOnlyToInstantIso(addDaysToDateOnly(periods.after.end, 1))),
+  ]);
   const dbAttributionAvailable = dbBeforeRows.length > 0 || dbAfterRows.length > 0;
 
   return {
@@ -516,7 +485,6 @@ export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary>
     adVideoFunnels,
     creativeChange,
     landingChange,
-    landingChangeHistory: [],
     fullFunnel,
     adDiagnosisGroups: adGroups,
     campaigns,
@@ -526,7 +494,3 @@ export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary>
     roasNote: "매출 데이터 연동 후 ROAS 분석 예정",
   };
 }
-
-
-
-

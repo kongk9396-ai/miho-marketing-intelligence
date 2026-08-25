@@ -1,4 +1,4 @@
-import type { MetricComparisonRow, VerdictResult } from "@/lib/creative-changes/types";
+﻿import type { MetricComparisonRow, VerdictResult } from "@/lib/creative-changes/types";
 import type { AdDiagnosisStatus } from "@/lib/ad-diagnosis/types";
 import type { CampaignAdDiagnosisGroup } from "@/lib/ad-diagnosis/build";
 import type { FunnelStage, VideoHookMetrics } from "@/lib/video-analysis/funnel";
@@ -79,6 +79,44 @@ export interface LandingChangeSection {
   dbAfter: { totalLeads: number; validLeads: number; confirmedBookings: number } | null;
 }
 
+export interface LandingChangeHistoryItem {
+  id: string;
+  landingName: string;
+  changedAt: string;
+  changeTypeLabel: string;
+  oldVersion: string | null;
+  newVersion: string | null;
+  memo: string | null;
+  linkedCampaignNames: string[];
+
+  beforePeriod: {
+    start: string;
+    end: string;
+    dayCount: number;
+  } | null;
+
+  afterPeriod: {
+    start: string;
+    end: string;
+    dayCount: number;
+  } | null;
+
+  beforeDb: {
+    totalDb: number;
+    validDb: number;
+    confirmedBookings: number;
+    dailyAvgDb: number;
+    bookingRate: number | null;
+  } | null;
+
+  afterDb: {
+    totalDb: number;
+    validDb: number;
+    confirmedBookings: number;
+    dailyAvgDb: number;
+    bookingRate: number | null;
+  } | null;
+}
 export type BottleneckCategory =
   | "CREATIVE"
   | "LANDING"
@@ -158,6 +196,7 @@ export interface AdPerformanceSummary {
   adVideoFunnels: AdVideoFunnelSummary[];
   creativeChange: CreativeChangeSection;
   landingChange: LandingChangeSection;
+  landingChangeHistory: LandingChangeHistoryItem[];
   fullFunnel: FullFunnelStage[];
   adDiagnosisGroups: CampaignAdDiagnosisGroup[];
   campaigns: CampaignReportSummary[];
@@ -166,3 +205,4 @@ export interface AdPerformanceSummary {
   reportHeadline: string;
   roasNote: string;
 }
+

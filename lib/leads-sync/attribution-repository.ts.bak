@@ -12,8 +12,8 @@ import { normalizeHeader } from "@/lib/leads-sync/header-aliases";
  * docs/lead-attribution-setup.md for the write-side contract.
  */
 export interface AttributionRecord {
-  sourceSheet: string | null;
-  sourceRow: number | null;
+  sourceSheet: string;
+  sourceRow: number;
   submittedAt: string | null;
   landingName: string | null;
   utmSource: string | null;
@@ -80,15 +80,10 @@ export function attributionMatchKey(sheetName: string, rowNumber: number): strin
   return `${sheetName}|||${rowNumber}`;
 }
 
-/** Exact timestamp fallback for historical attribution rows that have no source_sheet/source_row. */
-export function attributionSubmittedAtKey(submittedAtIso: string): string {
-  return `submitted_at|||${submittedAtIso}`;
-}
-
 export function parseAttributionRecords(records: Record<string, unknown>[]): AttributionRecord[] {
   if (records.length === 0) return [];
   const headerMap = resolveAttributionHeaderMap(Object.keys(records[0]));
-  if ((!headerMap.source_sheet || !headerMap.source_row) && !headerMap.submitted_at) return [];
+  if (!headerMap.source_sheet || !headerMap.source_row) return []; // not the expected shape — never guess a join key
 
   return records
     .map((record) => {
@@ -98,19 +93,13 @@ export function parseAttributionRecords(records: Record<string, unknown>[]): Att
       };
       const sourceSheet = nullableString(get("source_sheet"));
       const sourceRowRaw = nullableString(get("source_row"));
-      const parsedSourceRow = sourceRowRaw !== null ? Number(sourceRowRaw) : NaN;
-      const sourceRow = Number.isFinite(parsedSourceRow) ? parsedSourceRow : null;
-      const submittedAt = parseSheetDateTime(get("submitted_at"));
-
-      // New records can use the stable source_sheet/source_row join.
-      // Historical DBcart rows without those columns may fall back to an
-      // exact submitted_at match. Rows with neither identity are ignored.
-      if ((!sourceSheet || sourceRow === null) && !submittedAt) return null;
+      const sourceRow = sourceRowRaw !== null ? Number(sourceRowRaw) : NaN;
+      if (!sourceSheet || !Number.isFinite(sourceRow)) return null;
 
       return {
         sourceSheet,
         sourceRow,
-        submittedAt,
+        submittedAt: parseSheetDateTime(get("submitted_at")),
         landingName: nullableString(get("landing_name")),
         utmSource: nullableString(get("utm_source")),
         utmMedium: nullableString(get("utm_medium")),
@@ -130,8 +119,8 @@ export interface AttributionRecordInput {
   utmMedium: string | null;
   utmCampaign: string | null;
   utmContent: string | null;
-  sourceSheet: string | null;
-  sourceRow: number | null;
+  sourceSheet: string;
+  sourceRow: number;
 }
 
 /**
@@ -177,36 +166,7 @@ export async function fetchAttributionMatchMap(
   if (parsed.length === 0 && records.length > 0) return null; // shape didn't match — don't pretend it's "empty but fine"
 
   const map = new Map<string, AttributionRecord>();
-
-  // Timestamp fallback is allowed only when that timestamp is unique.
-  // Ambiguous timestamps are deliberately left unmatched rather than
-  // attributing a lead to the wrong ad.
-  const submittedAtCounts = new Map<string, number>();
-  for (const record of parsed) {
-    if (!record.submittedAt) continue;
-    submittedAtCounts.set(
-      record.submittedAt,
-      (submittedAtCounts.get(record.submittedAt) ?? 0) + 1
-    );
-  }
-
-  for (const record of parsed) {
-    if (record.sourceSheet && record.sourceRow !== null) {
-      map.set(
-        attributionMatchKey(record.sourceSheet, record.sourceRow),
-        record
-      );
-    }
-
-    if (
-      record.submittedAt &&
-      submittedAtCounts.get(record.submittedAt) === 1
-    ) {
-      map.set(attributionSubmittedAtKey(record.submittedAt), record);
-    }
-  }
-
+  for (const record of parsed) map.set(attributionMatchKey(record.sourceSheet, record.sourceRow), record);
   return map;
 }
-
 

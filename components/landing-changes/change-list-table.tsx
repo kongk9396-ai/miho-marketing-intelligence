@@ -1,10 +1,12 @@
-import Link from "next/link";
+﻿import Link from "next/link";
+import { deleteLandingChangeAction } from "@/app/changes/landing/actions";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LANDING_CHANGE_TYPE_LABELS } from "@/lib/landing-changes/change-type-labels";
 import { computeObservationProgress } from "@/lib/creative-changes/period";
 import { formatKoreanDateTime } from "@/lib/date/kst";
 import type { LandingChangeRecord } from "@/lib/landing-changes/types";
+import { parseLinkedCampaignNames } from "@/lib/landing-changes/repository";
 
 interface ChangeListTableProps {
   changes: LandingChangeRecord[];
@@ -20,7 +22,9 @@ export function LandingChangeListTable({ changes }: ChangeListTableProps) {
         <div>
           <p className="font-medium text-gray-900">{row.landing_name}</p>
           <p className="text-xs text-gray-400">
-            {row.linked_campaign_name ? `연결 캠페인: ${row.linked_campaign_name}` : "연결 캠페인 없음"}
+            {parseLinkedCampaignNames(row.linked_campaign_name).length > 0
+              ? `연결 캠페인: ${parseLinkedCampaignNames(row.linked_campaign_name).join(", ")}`
+              : "연결 캠페인 없음"}
           </p>
         </div>
       ),
@@ -54,9 +58,31 @@ export function LandingChangeListTable({ changes }: ChangeListTableProps) {
       key: "action",
       header: "",
       render: (row) => (
-        <Link href={`/landing/before-after?changeId=${row.id}`} className="text-sm font-medium text-blue-600 hover:underline">
-          전후 비교
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/landing/before-after?changeId=${row.id}`}
+            className="text-sm font-medium text-blue-600 hover:underline"
+          >
+            전후 비교
+          </Link>
+
+          <Link
+            href={`/changes/landing?edit=${row.id}`}
+            className="text-sm font-medium text-gray-700 hover:underline"
+          >
+            수정
+          </Link>
+
+          <form action={deleteLandingChangeAction}>
+            <input type="hidden" name="id" value={row.id} />
+            <button
+              type="submit"
+              className="text-sm font-medium text-red-600 hover:underline"
+            >
+              삭제
+            </button>
+          </form>
+        </div>
       ),
     },
   ];
@@ -71,3 +97,5 @@ export function LandingChangeListTable({ changes }: ChangeListTableProps) {
     />
   );
 }
+
+
