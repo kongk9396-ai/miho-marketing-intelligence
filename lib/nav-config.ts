@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  ClipboardList,
   ChartLine,
   Megaphone,
   Image as ImageIcon,
@@ -21,6 +22,7 @@ import {
   Waypoints,
   Database,
   Settings,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,7 +39,10 @@ export interface NavSection {
 
 export const navSections: NavSection[] = [
   {
-    items: [{ label: "대시보드", href: "/", icon: LayoutDashboard }],
+    items: [
+      { label: "종합 보고", href: "/report", icon: ClipboardList },
+      { label: "대시보드", href: "/", icon: LayoutDashboard },
+    ],
   },
   {
     title: "광고 분석",
@@ -58,6 +63,11 @@ export const navSections: NavSection[] = [
         label: "전후 비교",
         href: "/ads/before-after",
         icon: GitCompare,
+      },
+      {
+        label: "랜딩 전후 비교",
+        href: "/landing/before-after",
+        icon: LayoutTemplate,
       },
     ],
   },
@@ -88,7 +98,7 @@ export const navSections: NavSection[] = [
       },
       {
         label: "랜딩 변경",
-        href: "/change-history/landing-changes",
+        href: "/changes/landing",
         icon: LayoutTemplate,
       },
       {
@@ -119,6 +129,7 @@ export const navSections: NavSection[] = [
   {
     title: "설정",
     items: [
+      { label: "광고 운영 설정", href: "/settings/ad-operations", icon: SlidersHorizontal },
       { label: "데이터베이스", href: "/settings/database", icon: Database },
       { label: "텔레그램", href: "/settings/telegram", icon: Send },
       { label: "기본 설정", href: "/settings/general", icon: Settings },

@@ -29,5 +29,18 @@ export async function getVideoAdSummaries(scanLimit = SCAN_LIMIT): Promise<Video
     })
   );
 
-  return results.filter((r) => r.metrics.totalVideoPlays > 0);
+  // totalVideoPlays (Meta's raw "video_plays" column) is absent from some
+  // real-world exports even when the percentage-retention columns are
+  // populated — filtering on it alone would hide every ad with real video
+  // data. Any engagement signal (3s or any %-stage) counts as "has video data".
+  return results.filter(
+    (r) =>
+      r.metrics.totalVideoPlays > 0 ||
+      r.metrics.video3s.count > 0 ||
+      r.metrics.video25.count > 0 ||
+      r.metrics.video50.count > 0 ||
+      r.metrics.video75.count > 0 ||
+      r.metrics.video95.count > 0 ||
+      r.metrics.video100.count > 0
+  );
 }

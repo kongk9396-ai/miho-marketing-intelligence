@@ -99,9 +99,15 @@ function classifyStatus(
 }
 
 export function buildMetricComparisons(before: PeriodMetrics, after: PeriodMetrics): MetricComparisonRow[] {
+  // A window with zero meta_daily rows at all must never show as "0" (looks
+  // like a real, measured zero) — only a window that has real rows but
+  // happens to sum to 0 (e.g. a genuine no-spend day) may show 0.
+  const beforeHasRows = before.dayCount > 0;
+  const afterHasRows = after.dayCount > 0;
+
   return METRIC_DEFS.map((def) => {
-    const beforeValue = def.getValue(before);
-    const afterValue = def.getValue(after);
+    const beforeValue = beforeHasRows ? def.getValue(before) : null;
+    const afterValue = afterHasRows ? def.getValue(after) : null;
     const beforeCount = def.getCount?.(before);
     const afterCount = def.getCount?.(after);
     const changePercent = computeChangePercent(beforeValue, afterValue);

@@ -3,10 +3,8 @@
 import { useMemo, useState } from "react";
 import { useActionState } from "react";
 import { AlertTriangle } from "lucide-react";
-import {
-  initialRegisterChangeState,
-  registerCreativeChangeAction,
-} from "@/app/changes/creative/actions";
+import { registerCreativeChangeAction } from "@/app/changes/creative/actions";
+import { initialRegisterChangeState } from "@/app/changes/creative/action-state";
 import { CHANGE_TYPE_LABELS } from "@/lib/creative-changes/change-type-labels";
 import { CHANGE_TYPES } from "@/lib/creative-changes/types";
 import type { AdHierarchyRow } from "@/lib/creative-changes/repository";

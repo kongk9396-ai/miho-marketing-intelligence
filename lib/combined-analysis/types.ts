@@ -2,7 +2,10 @@ export interface CombinedMetaSummary {
   spend: number;
   impressions: number;
   ctr: number | null;
+  /** "count" = from real click counts (all-clicks or link-clicks), "raw_metric" = rebuilt from Meta's own reported rate column, "none" = neither exists. See lib/ad-diagnosis/meta-rate-fallback.ts. */
+  ctrSource: "count" | "raw_metric" | "none";
   cpc: number | null;
+  cpcSource: "count" | "raw_metric" | "none";
   video50Rate: number | null;
 }
 
@@ -14,6 +17,8 @@ export interface CombinedGa4Summary {
   formStartRate: number | null;
   formCompletes: number;
   formCompleteRate: number | null;
+  /** False = form_start events fired sitewide in this window but form_complete never did — a disconnected tracking event, not genuine 0% completion. The UI must show "추적 미연결", never "0", when this is false. */
+  formCompleteTrackingConnected: boolean;
 }
 
 export interface CombinedAdSummary {

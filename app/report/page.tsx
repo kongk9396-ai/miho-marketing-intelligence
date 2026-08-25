@@ -1,0 +1,277 @@
+﻿import { KpiCard } from "@/components/ui/kpi-card";
+import { ComparisonTable } from "@/components/creative-changes/comparison-table";
+import { VerdictPanel } from "@/components/creative-changes/verdict-panel";
+import { RetentionFunnelChart } from "@/components/video-analysis/retention-funnel-chart";
+import { AdVideoComparisonTable } from "@/components/report/ad-video-comparison-table";
+import { TomorrowSummaryCard } from "@/components/report/tomorrow-summary-card";
+import { TodayConclusionCard } from "@/components/report/today-conclusion-card";
+import { OperatingTimelineCard } from "@/components/report/operating-timeline-card";
+import { AdComparisonTable } from "@/components/report/ad-comparison-table";
+import { FullFunnelChart } from "@/components/report/full-funnel-chart";
+import { CampaignSummaryTable } from "@/components/report/campaign-summary-table";
+import { buildAdPerformanceSummary } from "@/lib/ad-performance-summary/build";
+import { buildCustomPeriodReport } from "@/lib/reports/weekly";
+import { buildMeetingConclusion } from "@/lib/ad-performance-summary/meeting-summary";
+import { formatCount, formatPercent, formatWon } from "@/lib/dashboard/format";
+import { formatKoreanDateTime } from "@/lib/date/kst";
+import { SchemaNotReadyError } from "@/lib/meta/schema-not-ready";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+
+const IMPROVEMENT_LABELS: Record<string, string> = {
+  CREATIVE: "소재 수정",
+  LANDING: "랜딩 개선",
+  FORM: "폼 개선",
+  DB_QUALITY: "타겟/DB 품질 점검",
+  CONSULTATION_BOOKING: "상담/예약 프로세스 점검",
+};
+
+export default async function ComprehensiveReportPage() {
+let summary;
+  try {
+    summary = await buildAdPerformanceSummary();
+  } catch (err) {
+    if (err instanceof SchemaNotReadyError) {
+      return (
+        <>
+
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {err.message}
+          </div>
+        </>
+      );
+    }
+    throw err;
+  }
+
+  const periodReport = await buildCustomPeriodReport("2026-08-17", "2026-08-21");
+  const conclusion = buildMeetingConclusion(summary);
+  const offReviewAds = summary.todayConclusion.groups.offReview;
+  const bottleneckIsImprovementCandidate =
+    summary.bottleneck.category !== "HEALTHY" && summary.bottleneck.category !== "INSUFFICIENT_DATA";
+
+  return (
+    <>
+      {/* 1. 8/17~8/21 보고 요약 */}
+      <TomorrowSummaryCard summary={summary} periodReport={periodReport} />
+
+      <div className="mt-6">
+        
+      </div>
+
+      {/* 8. 한눈에 보는 결론 */}
+      <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/60 px-4 py-3 text-sm leading-relaxed text-gray-800">
+        {conclusion}
+      </div>
+
+      {/* 2. Meta 광고 시작일 / 운영일수 / 4. 월 예상 광고비 */}
+      <div className="mt-6">
+        <OperatingTimelineCard account={summary.account} />
+      </div>
+
+      {/* 3. DB / 예약 성공률 */}
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <KpiCard label="총 DB" value={formatCount(summary.db.totalDb)} />
+        <KpiCard label="유효 DB" value={formatCount(summary.db.validDb)} />
+        <KpiCard label="예약 확정" value={formatCount(summary.db.confirmedBookings)} />
+        <KpiCard
+          label="유효 DB 대비 예약률"
+          value={summary.bookingRates.validToBookingRate !== null ? formatPercent(summary.bookingRates.validToBookingRate, 1) : "데이터 없음"}
+        />
+        <KpiCard
+          label="전체 DB 대비 예약률"
+          value={summary.bookingRates.totalToBookingRate !== null ? formatPercent(summary.bookingRates.totalToBookingRate, 1) : "데이터 없음"}
+        />
+        <KpiCard label="DB CPA" value={summary.db.dbCpa !== null ? formatWon(summary.db.dbCpa) : "데이터 없음"} />
+        <KpiCard label="유효 DB CPA" value={summary.db.validDbCpa !== null ? formatWon(summary.db.validDbCpa) : "데이터 없음"} />
+        <KpiCard label="예약 CPA" value={summary.db.bookingCpa !== null ? formatWon(summary.db.bookingCpa) : "데이터 없음"} />
+      </div>
+
+      {/* 5. 릴스 수정 전후 */}
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-gray-900">릴스(소재) 수정 전후</h3>
+          <Link href="/ads/before-after" className="text-xs font-medium text-blue-600 hover:underline">
+            전체 이력 보기
+          </Link>
+        </div>
+        {!summary.creativeChange.available ? (
+          <p className="mt-2 text-sm text-gray-500">{summary.creativeChange.reportLine}</p>
+        ) : (
+          <>
+            <div className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              {summary.creativeChange.reportLine}
+            </div>
+            {summary.creativeChange.comparisons ? (
+              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                  <ComparisonTable rows={summary.creativeChange.comparisons} />
+                </div>
+                <VerdictPanel verdict={summary.creativeChange.verdict} isObserving={summary.creativeChange.verdict === null} />
+              </div>
+            ) : null}
+            <p className="mt-3 text-xs text-gray-500">
+              {summary.creativeChange.dbAttributionAvailable && summary.creativeChange.dbBefore && summary.creativeChange.dbAfter
+                ? `DB ${summary.creativeChange.dbBefore.totalLeads}건 → ${summary.creativeChange.dbAfter.totalLeads}건, 예약 ${summary.creativeChange.dbBefore.confirmedBookings}건 → ${summary.creativeChange.dbAfter.confirmedBookings}건`
+                : "DB/예약 귀속 불가 (UTM 매핑 없음 또는 매칭된 리드 없음)"}
+            </p>
+          </>
+        )}
+      </section>
+
+      {/* 6. 랜딩 수정 전후 */}
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-gray-900">랜딩 수정 전후</h3>
+          <Link href="/landing/before-after" className="text-xs font-medium text-blue-600 hover:underline">
+            전체 이력 보기
+          </Link>
+        </div>
+        {!summary.landingChange.available ? (
+          <p className="mt-2 text-sm text-gray-500">{summary.landingChange.reportLine}</p>
+        ) : (
+          <>
+            <div className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              {summary.landingChange.reportLine}
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              {summary.landingChange.dbAttributionAvailable && summary.landingChange.dbBefore && summary.landingChange.dbAfter
+                ? `DB ${summary.landingChange.dbBefore.totalLeads}건 → ${summary.landingChange.dbAfter.totalLeads}건, 예약 ${summary.landingChange.dbBefore.confirmedBookings}건 → ${summary.landingChange.dbAfter.confirmedBookings}건`
+                : "연결된 캠페인이 없어 DB 귀속 불가입니다."}
+            </p>
+          </>
+        )}
+      </section>
+
+      {/* 7. 영상 시청 분석 */}
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <RetentionFunnelChart stages={summary.videoFunnel} hook={summary.videoHook} />
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <p className="text-sm font-semibold text-gray-900">최대 이탈 구간 (전체 계정 합산)</p>
+          <p className="mt-2 text-sm text-gray-700">{summary.videoMaxDropoffLabel ?? "표본 부족으로 판정 보류"}</p>
+          <p className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900">{summary.videoInterpretation}</p>
+        </div>
+      </div>
+      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
+        <AdVideoComparisonTable ads={summary.adVideoFunnels} />
+      </div>
+
+      {/* 8. 전체 광고 비교 / OFF 검토 */}
+      <div className="mt-6">
+        <AdComparisonTable decisions={summary.adComparison} />
+      </div>
+
+      {/* 9. 개선할 점 */}
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <h3 className="text-sm font-semibold text-gray-900">개선할 점</h3>
+        {offReviewAds.length === 0 && !bottleneckIsImprovementCandidate ? (
+          <p className="mt-2 text-sm text-gray-500">현재 뚜렷하게 조치가 필요한 항목이 없습니다.</p>
+        ) : (
+          <ol className="mt-2 space-y-3">
+            {offReviewAds.slice(0, 3).map((ad, i) => (
+              <li key={ad.adId} className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <p className="font-medium">
+                  {i + 1}. {ad.adName ?? ad.adId} OFF 검토
+                </p>
+                <p className="mt-0.5 text-xs">근거: {ad.reasons.slice(0, 2).join(", ")}</p>
+              </li>
+            ))}
+            {bottleneckIsImprovementCandidate ? (
+              <li className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <p className="font-medium">
+                  {offReviewAds.length + 1}. {IMPROVEMENT_LABELS[summary.bottleneck.category] ?? "병목 개선"}
+                </p>
+                <p className="mt-0.5 text-xs">근거: {summary.bottleneck.reasons.join(", ") || summary.bottleneck.headline}</p>
+              </li>
+            ) : null}
+          </ol>
+        )}
+      </section>
+
+      {/* 10. 향후 ROAS 안내 */}
+      <section className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-500">
+        {summary.roasNote}
+      </section>
+
+      {/* 11. 세부 데이터 */}
+      <h2 className="mt-10 text-sm font-semibold text-gray-500">세부 데이터</h2>
+
+      <div className="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+        {summary.reportHeadline}
+      </div>
+
+      <div className="mt-4">
+        <TodayConclusionCard conclusion={summary.todayConclusion} />
+      </div>
+
+      <div className="mt-4">
+        <FullFunnelChart stages={summary.fullFunnel} />
+      </div>
+
+      <section className="mt-6">
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">캠페인별 상세</h3>
+        <CampaignSummaryTable campaigns={summary.campaigns} />
+      </section>
+
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <h3 className="text-sm font-semibold text-gray-900">종합 병목</h3>
+        <p className="mt-2 text-sm text-gray-700">{summary.bottleneck.headline}</p>
+        {summary.bottleneck.reasons.length > 0 ? (
+          <ul className="mt-2 list-inside list-disc text-sm text-gray-600">
+            {summary.bottleneck.reasons.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
+      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">최근 일일 보고</h3>
+            <Link href="/reports/daily" className="text-xs font-medium text-blue-600 hover:underline">
+              전체 보기
+            </Link>
+          </div>
+          {summary.recentReports.daily ? (
+            <p className="mt-2 text-sm text-gray-700">
+              {summary.recentReports.daily.start_date} — {summary.recentReports.daily.summary}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-gray-500">아직 생성된 일일 보고가 없습니다.</p>
+          )}
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">최근 주간 보고</h3>
+            <Link href="/reports/weekly" className="text-xs font-medium text-blue-600 hover:underline">
+              전체 보기
+            </Link>
+          </div>
+          {summary.recentReports.weekly ? (
+            <p className="mt-2 text-sm text-gray-700">
+              {summary.recentReports.weekly.start_date} ~ {summary.recentReports.weekly.end_date} —{" "}
+              {summary.recentReports.weekly.summary}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-gray-500">아직 생성된 주간 보고가 없습니다.</p>
+          )}
+        </div>
+      </section>
+
+      <p className="mt-6 text-xs text-gray-400">
+        생성 시각: {formatKoreanDateTime(new Date().toISOString())} · 광고/설정 등록은 좌측 &quot;설정 &gt; 광고 운영
+        설정&quot;, &quot;변경 이력&quot; 메뉴에서 관리합니다.
+      </p>
+    </>
+  );
+}
+
+
+
+
+
+
+
+

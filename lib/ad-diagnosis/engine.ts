@@ -120,6 +120,11 @@ function buildMetricsView(input: AdDiagnosisAdInput, derived: DerivedMetrics) {
     landingConversionRate: input.ga4?.landingConversionRate ?? null,
     formCompleteTrackingConnected: input.ga4?.formCompleteTrackingConnected ?? true,
     videoCompletionRate: input.meta.videoCompletionRate,
+    video25: input.meta.video25,
+    video50: input.meta.video50,
+    video75: input.meta.video75,
+    video95: input.meta.video95,
+    video100: input.meta.video100,
   };
 }
 

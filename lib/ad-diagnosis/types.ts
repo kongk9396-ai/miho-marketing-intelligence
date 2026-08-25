@@ -125,6 +125,12 @@ export interface AdDiagnosisMetricsView {
   landingConversionRate: number | null;
   formCompleteTrackingConnected: boolean;
   videoCompletionRate: number | null;
+  /** Raw (already-summed) 25/50/75/95/100 video-retention counts for this ad — feeds the per-ad retention funnel on /report. */
+  video25: number;
+  video50: number;
+  video75: number;
+  video95: number;
+  video100: number;
 }
 
 export interface AdDiagnosisResult {

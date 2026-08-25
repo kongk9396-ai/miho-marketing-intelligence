@@ -63,4 +63,6 @@ export interface Ga4DailyLike {
   cta_clicks: number;
   form_starts: number;
   form_completes: number;
+  /** Only populated when the caller explicitly selects it (see getGa4DailyRows landingPagePattern filter) — optional so existing callers/mocks are unaffected. */
+  landing_page?: string;
 }

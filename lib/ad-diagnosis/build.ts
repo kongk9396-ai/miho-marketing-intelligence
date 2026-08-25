@@ -43,7 +43,7 @@ function baseAdName(adName: string | null): string | null {
  * tracking event, not universally-zero completions — see
  * AdGa4Metrics.formCompleteTrackingConnected.
  */
-async function checkFormCompleteTrackingConnected(startDate: string, endDate: string): Promise<boolean> {
+export async function checkFormCompleteTrackingConnected(startDate: string, endDate: string): Promise<boolean> {
   const rows = await getGa4DailyRows({ startDate, endDate });
   const agg = aggregateGa4Metrics(rows);
   if (agg.totalFormStarts === 0) return true; // no signal either way — don't claim it's broken

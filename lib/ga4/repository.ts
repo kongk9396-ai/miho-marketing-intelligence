@@ -103,18 +103,23 @@ export interface Ga4FilterOptions {
   content?: string;
   startDate?: string;
   endDate?: string;
+  /** ILIKE pattern (e.g. "%chatko%") matched against ga4_daily.landing_page — used by lib/landing-changes for before/after comparisons scoped to one landing page. */
+  landingPagePattern?: string;
 }
 
 export async function getGa4DailyRows(filters: Ga4FilterOptions = {}): Promise<Ga4DailyLike[]> {
   const supabase = getSupabaseServiceRoleClient();
   let query = supabase
     .from("ga4_daily")
-    .select("date, sessions, users, engaged_sessions, page_views, cta_clicks, form_starts, form_completes");
+    .select(
+      "date, sessions, users, engaged_sessions, page_views, cta_clicks, form_starts, form_completes, landing_page"
+    );
 
   if (filters.campaign) query = query.eq("campaign", filters.campaign);
   if (filters.content) query = query.eq("content", filters.content);
   if (filters.startDate) query = query.gte("date", filters.startDate);
   if (filters.endDate) query = query.lte("date", filters.endDate);
+  if (filters.landingPagePattern) query = query.ilike("landing_page", filters.landingPagePattern);
 
   const { data, error } = await query.order("date", { ascending: true });
   if (error) throwSupabaseError("ga4_daily 조회", error);

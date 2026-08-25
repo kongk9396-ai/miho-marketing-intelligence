@@ -66,16 +66,28 @@ export function buildCampaignBreakdown(
   spendByUtmKey: Map<string, number>
 ): CampaignBreakdownRow[] {
   const leadsByUtmKey = new Map<string, LeadAnalysisRow[]>();
-  const unmappedLeads: LeadAnalysisRow[] = [];
+  // Two distinct "couldn't attribute" reasons, never merged into one bucket:
+  // - noUtmLeads: the lead never had a utm_campaign at all (legacy DB from
+  //   before UTM collection existed) — this is a data-collection-era fact,
+  //   not a mapping problem, so it must not read as "매핑되지 않음".
+  // - mismatchedUtmLeads: the lead has a real utm_campaign/utm_content, it
+  //   just doesn't match any of the currently-known Meta ads' resolved keys
+  //   (renamed ad, missing utm_mappings row, etc.) — a genuine mapping gap.
+  const noUtmLeads: LeadAnalysisRow[] = [];
+  const mismatchedUtmLeads: LeadAnalysisRow[] = [];
 
   for (const lead of leadsRows) {
-    const key = utmKey(lead.utm_campaign ?? "", lead.utm_content ?? "");
+    if (!lead.utm_campaign) {
+      noUtmLeads.push(lead);
+      continue;
+    }
+    const key = utmKey(lead.utm_campaign, lead.utm_content ?? "");
     if (spendByUtmKey.has(key)) {
       const arr = leadsByUtmKey.get(key) ?? [];
       arr.push(lead);
       leadsByUtmKey.set(key, arr);
     } else {
-      unmappedLeads.push(lead);
+      mismatchedUtmLeads.push(lead);
     }
   }
 
@@ -98,11 +110,24 @@ export function buildCampaignBreakdown(
     });
   }
 
-  if (unmappedLeads.length > 0) {
-    const kpi = computeLeadsKpiSummary(unmappedLeads);
+  if (mismatchedUtmLeads.length > 0) {
+    const kpi = computeLeadsKpiSummary(mismatchedUtmLeads);
     rows.push({
       key: "__unmapped__",
       campaignLabel: "매핑되지 않음",
+      contentLabel: null,
+      isUnmapped: true,
+      spend: 0,
+      kpi,
+      cpa: NULL_CPA,
+    });
+  }
+
+  if (noUtmLeads.length > 0) {
+    const kpi = computeLeadsKpiSummary(noUtmLeads);
+    rows.push({
+      key: "__no_utm__",
+      campaignLabel: "과거 DB 중 광고 귀속 보류",
       contentLabel: null,
       isUnmapped: true,
       spend: 0,

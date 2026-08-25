@@ -24,8 +24,28 @@ const columns: DataTableColumn<CombinedAdSummary>[] = [
       </div>
     ),
   },
-  { key: "ctr", header: "CTR", align: "right", render: (row) => formatPercent(row.meta.ctr) },
-  { key: "cpc", header: "CPC", align: "right", render: (row) => formatWon(row.meta.cpc) },
+  {
+    key: "ctr",
+    header: "CTR",
+    align: "right",
+    render: (row) => (
+      <span>
+        {formatPercent(row.meta.ctr)}
+        {row.meta.ctrSource === "raw_metric" ? <span className="ml-1 text-[10px] text-amber-600">Meta 원본값</span> : null}
+      </span>
+    ),
+  },
+  {
+    key: "cpc",
+    header: "CPC",
+    align: "right",
+    render: (row) => (
+      <span>
+        {formatWon(row.meta.cpc)}
+        {row.meta.cpcSource === "raw_metric" ? <span className="ml-1 text-[10px] text-amber-600">Meta 원본값</span> : null}
+      </span>
+    ),
+  },
   {
     key: "sessions",
     header: "랜딩 세션",
@@ -34,9 +54,16 @@ const columns: DataTableColumn<CombinedAdSummary>[] = [
   },
   {
     key: "ctaRate",
-    header: "CTA율",
+    header: "CTA (이벤트 수 · 세션 대비)",
     align: "right",
-    render: (row) => (row.ga4 ? formatPercent(row.ga4.ctaRate, 1) : "—"),
+    render: (row) =>
+      row.ga4 ? (
+        <span>
+          {row.ga4.ctaClicks.toLocaleString("ko-KR")}건 · {formatPercent(row.ga4.ctaRate, 1)}
+        </span>
+      ) : (
+        "—"
+      ),
   },
   {
     key: "formStartRate",
@@ -48,7 +75,11 @@ const columns: DataTableColumn<CombinedAdSummary>[] = [
     key: "formCompletes",
     header: "폼 완료",
     align: "right",
-    render: (row) => (row.ga4 ? row.ga4.formCompletes.toLocaleString("ko-KR") : "—"),
+    render: (row) => {
+      if (!row.ga4) return "—";
+      if (!row.ga4.formCompleteTrackingConnected) return "추적 미연결";
+      return row.ga4.formCompletes.toLocaleString("ko-KR");
+    },
   },
 ];
 

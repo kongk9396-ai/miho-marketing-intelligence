@@ -37,13 +37,18 @@ export const HEADER_ALIASES: Record<string, string[]> = {
     "CTR(링크 클릭률)",
     "링크 클릭률(CTR)",
   ],
-  cpc: ["CPC (all)", "CPC (cost per link click)", "CPC(전체)"],
+  cpc: ["CPC (all)", "CPC(전체)", "CPC(전체) (KRW)"],
   link_cpc: [
     "CPC (cost per link click)",
     "링크 클릭당 비용(CPC)",
     "CPC(링크 클릭당 비용)",
+    "CPC(링크 클릭당 비용) (KRW)",
   ],
-  cpm: ["CPM (cost per 1,000 impressions)", "CPM(1,000회 노출당 비용)"],
+  cpm: [
+    "CPM (cost per 1,000 impressions)",
+    "CPM(1,000회 노출당 비용)",
+    "CPM(1,000회 노출당 비용) (KRW)",
+  ],
   video_plays: ["Video plays", "동영상 재생"],
   video_3s: ["3-second video plays", "3초 동영상 재생", "동영상 3초 이상 재생"],
   video_25: [

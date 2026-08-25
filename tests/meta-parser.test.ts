@@ -85,6 +85,66 @@ describe("parseMetaReportFile — CSV", () => {
     expect(tempRow?.is_temp_ad_id).toBe(true);
     expect(tempRow?.ad_id).toMatch(/^temp:/);
   });
+
+  it("Meta 한국어 광고 리포트의 '(KRW)' 접미사가 붙은 CPC/CPM 헤더를 인식한다 (실제 계정 CSV 헤더 기준)", () => {
+    // Header row copied verbatim from a real Ads Manager Korean export —
+    // CPC/CPM append " (KRW)" the same way spend does, which the alias list
+    // previously only handled for spend, leaving cpc/link_cpc/cpm as null
+    // despite the source file having real values.
+    const header = [
+      "보고 시작",
+      "보고 종료",
+      "광고 이름",
+      "지출 금액 (KRW)",
+      "노출",
+      "도달",
+      "빈도",
+      '"CPM(1,000회 노출당 비용) (KRW)"', // quoted: the field itself contains a comma
+      "링크 클릭",
+      "CTR(링크 클릭률)",
+      "CPC(링크 클릭당 비용) (KRW)",
+      "동영상 3초 이상 재생",
+      "캠페인 이름",
+      "CTR(전체)",
+      "CPC(전체) (KRW)",
+    ].join(",");
+    const dataRow = [
+      "2026-08-17",
+      "2026-08-23",
+      "0515 정근화나레이션",
+      "356308",
+      "90240",
+      "83900",
+      "1.075566",
+      "3948.448582",
+      "11451",
+      "12.689495",
+      "31.115885",
+      "36473",
+      "0515 정근화 나레이션",
+      "12.661791",
+      "31.183966",
+    ].join(",");
+
+    const { result } = parseMetaReportFile({
+      buffer: Buffer.from([header, dataRow].join("\n"), "utf-8"),
+      fileName: "korean_krw_headers.csv",
+    });
+
+    expect(result.fatalError).toBeUndefined();
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      spend: 356308,
+      impressions: 90240,
+      link_clicks: 11451,
+      link_ctr: 12.689495,
+      link_cpc: 31.115885,
+      cpm: 3948.448582,
+      ctr: 12.661791,
+      cpc: 31.183966,
+      video_3s: 36473,
+    });
+  });
 });
 
 describe("parseMetaReportFile — 임시 ad_id 생성 (ad_id 없는 CSV)", () => {

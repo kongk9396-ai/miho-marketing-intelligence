@@ -147,7 +147,11 @@ export default async function DashboardPage() {
         />
         <KpiCard
           label="랜딩 전환율"
-          value={formatPercent(kpi?.landingConversionRate ?? null)}
+          value={
+            kpi?.hasGa4Data && !kpi.formCompleteTrackingConnected
+              ? "폼 완료 추적 미연결"
+              : formatPercent(kpi?.landingConversionRate ?? null)
+          }
           icon={Percent}
           emptyHint={!kpi?.hasGa4Data ? "아직 데이터가 없습니다." : undefined}
         />

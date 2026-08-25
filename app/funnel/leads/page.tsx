@@ -140,6 +140,12 @@ export default async function LeadsFunnelPage() {
           getRowKey={(row) => row.key}
           emptyMessage="아직 데이터가 없습니다."
         />
+        {breakdown.some((row) => row.key === "__no_utm__") ? (
+          <p className="mt-2 text-xs text-gray-500">
+            과거 DB 중 광고 귀속 보류: DBcart 원본 대조로 일부는 복구했지만, 같은 날짜에 리드가 여럿이고
+            원본 시각 정보가 부족해 1:1로 정확히 매칭할 근거가 없는 건은 추측하지 않고 귀속을 보류했습니다.
+          </p>
+        ) : null}
       </div>
     </>
   );

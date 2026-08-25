@@ -8,7 +8,7 @@ import { VideoDiagnosisCard } from "@/components/video-analysis/video-diagnosis-
 import { VideoSummaryTable } from "@/components/video-analysis/video-summary-table";
 import { VideoRankingSection } from "@/components/video-analysis/video-ranking-section";
 import { getVideoAdSummaries } from "@/lib/video-analysis/summary";
-import { buildRetentionFunnel } from "@/lib/video-analysis/funnel";
+import { buildRetentionFunnel, buildVideoHookMetrics, buildRetentionInterpretation } from "@/lib/video-analysis/funnel";
 import { diagnoseVideo } from "@/lib/video-analysis/diagnosis";
 import { buildCreativeRankings } from "@/lib/video-analysis/ranking";
 import { SchemaNotReadyError } from "@/lib/meta/schema-not-ready";
@@ -67,6 +67,8 @@ export default async function VideoAnalysisPage({ searchParams }: VideoAnalysisP
   const selectedAd = sortedBySpend.find((a) => a.adId === params.adId) ?? sortedBySpend[0];
 
   const funnel = buildRetentionFunnel(selectedAd.metrics);
+  const hook = buildVideoHookMetrics(selectedAd.metrics);
+  const interpretation = buildRetentionInterpretation(funnel);
   const diagnosis = diagnoseVideo(selectedAd.metrics);
   const rankings = buildCreativeRankings(ads);
 
@@ -99,7 +101,10 @@ export default async function VideoAnalysisPage({ searchParams }: VideoAnalysisP
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RetentionFunnelChart stages={funnel} />
+        <div>
+          <RetentionFunnelChart stages={funnel} hook={hook} />
+          <p className="mt-3 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900">{interpretation}</p>
+        </div>
         <VideoDiagnosisCard insights={diagnosis} />
       </div>
 

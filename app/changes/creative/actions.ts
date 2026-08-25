@@ -4,13 +4,7 @@ import { revalidatePath } from "next/cache";
 import { findActiveObservationConflict } from "@/lib/creative-changes/conflict-check";
 import { getRecentChangesForAdOrCampaign, insertCreativeChange } from "@/lib/creative-changes/repository";
 import { CHANGE_TYPES, type ChangeType, type CreativeChangeInput } from "@/lib/creative-changes/types";
-
-export interface RegisterChangeFormState {
-  status: "idle" | "conflict" | "success" | "error";
-  message: string;
-}
-
-export const initialRegisterChangeState: RegisterChangeFormState = { status: "idle", message: "" };
+import type { RegisterChangeFormState } from "@/app/changes/creative/action-state";
 
 export async function registerCreativeChangeAction(
   _prevState: RegisterChangeFormState,
