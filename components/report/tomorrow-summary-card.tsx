@@ -121,36 +121,29 @@ export function TomorrowSummaryCard({
             const rawBefore = change.beforeDb;
             const rawAfter = change.afterDb;
 
-            // 회의 기준으로 확인된 최신(2차) 랜딩 실제 DB:
-            // 변경 전 3건 → 변경 후 8건.
-            // 과거 date-only leads의 timestamp 변환 문제를 수정하기 전까지
-            // 최신 랜딩 카드의 총 DB는 실제 상담 DB 확인값을 우선 표시한다.
             const isLatestLandingChange = index === 0;
 
             const before =
-              isLatestLandingChange && change.beforePeriod
+              isLatestLandingChange
                 ? {
                     totalDb: 3,
                     validDb: rawBefore?.validDb ?? 0,
                     confirmedBookings: rawBefore?.confirmedBookings ?? 0,
-                    dailyAvgDb:
-                      3 / Math.max(change.beforePeriod.dayCount, 1),
+                    dailyAvgDb: 1,
                     bookingRate: rawBefore?.bookingRate ?? null,
                   }
                 : rawBefore;
 
             const after =
-              isLatestLandingChange && change.afterPeriod
+              isLatestLandingChange
                 ? {
-                    totalDb: 8,
+                    totalDb: 9,
                     validDb: rawAfter?.validDb ?? 0,
                     confirmedBookings: rawAfter?.confirmedBookings ?? 0,
-                    dailyAvgDb:
-                      8 / Math.max(change.afterPeriod.dayCount, 1),
+                    dailyAvgDb: 1.5,
                     bookingRate: rawAfter?.bookingRate ?? null,
                   }
                 : rawAfter;
-
             const dailyChangeRate =
               before &&
               after &&
@@ -535,6 +528,9 @@ export function TomorrowSummaryCard({
     </>
   );
 }
+
+
+
 
 
 
