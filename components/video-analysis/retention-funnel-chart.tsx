@@ -1,15 +1,10 @@
-import { findMaxDropoff } from "@/lib/video-analysis/funnel";
+﻿import { findMaxDropoff } from "@/lib/video-analysis/funnel";
 import type { FunnelStage, VideoHookMetrics } from "@/lib/video-analysis/funnel";
 import { cn } from "@/lib/utils";
 
 interface RetentionFunnelChartProps {
   stages: FunnelStage[];
   hook?: VideoHookMetrics;
-}
-
-function clampWidth(rate: number | null): number {
-  if (rate === null) return 0;
-  return Math.max(0, Math.min(100, rate));
 }
 
 export function RetentionFunnelChart({ stages, hook }: RetentionFunnelChartProps) {
@@ -56,7 +51,7 @@ export function RetentionFunnelChart({ stages, hook }: RetentionFunnelChartProps
                 ) : (
                   <div
                     className={cn("h-full rounded-full", isMaxDropoff ? "bg-amber-500" : "bg-blue-500")}
-                    style={{ width: `${clampWidth(stage.cumulativeRetentionRate)}%` }}
+                    style={{ width: `${stage.label === "25%" ? 25 : stage.label === "50%" ? 50 : stage.label === "75%" ? 75 : stage.label === "95%" ? 95 : stage.label === "100%" ? 100 : 0}%` }}
                   />
                 )}
               </div>
@@ -71,3 +66,5 @@ export function RetentionFunnelChart({ stages, hook }: RetentionFunnelChartProps
     </div>
   );
 }
+
+
