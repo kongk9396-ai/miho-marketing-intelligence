@@ -4,10 +4,6 @@ import { runMetaSync } from "@/lib/meta/sync-engine";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Render Cron Job target. Requires `Authorization: Bearer <CRON_SECRET>`.
- * The schedule itself lives in Render's Cron Job config, not in this code.
- */
 export async function POST(request: Request) {
   if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "인증되지 않은 요청입니다." }, { status: 401 });

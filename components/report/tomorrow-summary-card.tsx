@@ -118,32 +118,8 @@ export function TomorrowSummaryCard({
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {summary.landingChangeHistory.map((change, index) => {
-            const rawBefore = change.beforeDb;
-            const rawAfter = change.afterDb;
-
-            const isLatestLandingChange = index === 0;
-
-            const before =
-              isLatestLandingChange
-                ? {
-                    totalDb: 3,
-                    validDb: rawBefore?.validDb ?? 0,
-                    confirmedBookings: rawBefore?.confirmedBookings ?? 0,
-                    dailyAvgDb: 1,
-                    bookingRate: rawBefore?.bookingRate ?? null,
-                  }
-                : rawBefore;
-
-            const after =
-              isLatestLandingChange
-                ? {
-                    totalDb: 9,
-                    validDb: rawAfter?.validDb ?? 0,
-                    confirmedBookings: rawAfter?.confirmedBookings ?? 0,
-                    dailyAvgDb: 1.5,
-                    bookingRate: rawAfter?.bookingRate ?? null,
-                  }
-                : rawAfter;
+            const before = change.beforeDb;
+            const after = change.afterDb;
             const dailyChangeRate =
               before &&
               after &&
@@ -296,43 +272,6 @@ export function TomorrowSummaryCard({
     <section className="mb-5 grid gap-4 lg:grid-cols-4">
 
   <div className="rounded-xl border border-violet-200 bg-violet-50 p-5">
-  <p className="mb-2 text-xs font-semibold text-violet-600">
-    예상 성과
-  </p>
-
-  <div className="space-y-3">
-    <div>
-      <p className="text-xs text-gray-500">월 예상 DB</p>
-      <p className="text-xl font-bold text-gray-900">
-        약 54건
-      </p>
-      <p className="mt-1 text-xs text-gray-500">
-        최근 5일 DB 9건 · 일평균 1.8건 기준
-      </p>
-    </div>
-
-    <div className="border-t border-violet-200 pt-3">
-      <p className="text-xs text-gray-500">예약매출 기준 예상 ROAS</p>
-      <p className="text-xl font-bold text-violet-700">
-        약 482%
-      </p>
-      <p className="mt-1 text-xs text-gray-500">
-        광고비 238.1만원 · 예약매출 1,148만원
-      </p>
-    </div>
-
-    <div className="border-t border-violet-200 pt-3">
-      <p className="text-xs text-gray-500">월 예상 예약매출</p>
-      <p className="text-xl font-bold text-gray-900">
-        약 2,460만원
-      </p>
-      <p className="mt-1 text-xs leading-5 text-gray-500">
-        8/11~8/24 예약매출 실적을 30일로 단순 환산
-      </p>
-    </div>
-  </div>
-</div>
-<div className="rounded-xl border border-violet-200 bg-violet-50 p-5">
   <p className="mb-2 text-xs font-semibold text-violet-600">
     예상 성과
   </p>
@@ -528,6 +467,7 @@ export function TomorrowSummaryCard({
     </>
   );
 }
+
 
 
 

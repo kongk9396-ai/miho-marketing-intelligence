@@ -8,6 +8,7 @@ import {
   upsertMetaDailyRows,
 } from "@/lib/meta/repository";
 import { logSyncEvent } from "@/lib/meta/sync-logger";
+import { listAdOperationalStatuses, upsertAdOperationalStatus } from "@/lib/ad-operations/repository";
 import type { MetaImportHistoryRecord, MetaImportSourceType } from "@/lib/meta/types";
 
 export interface ProcessReportFileInput {
@@ -126,6 +127,47 @@ export async function processMetaReportFile(
       status: "failed",
       error_message: err instanceof Error ? err.message : String(err),
     });
+  }
+
+  // Meta 보고서에서 처음 발견된 광고를 자동 등록한다.
+  // 기존 운영 상태는 절대 덮어쓰지 않는다.
+  const existingStatuses = await listAdOperationalStatuses();
+  const existingKeys = new Set(
+    existingStatuses.map((row) => `${row.campaign_name}|||${row.ad_name}`)
+  );
+
+  const uniqueAds = new Map<
+    string,
+    { campaignName: string; adName: string; adId: string | null }
+  >();
+
+  for (const row of result.rows) {
+    if (!row.campaign_name || !row.ad_name) continue;
+
+    const key = `${row.campaign_name}|||${row.ad_name}`;
+    if (uniqueAds.has(key)) continue;
+
+    uniqueAds.set(key, {
+      campaignName: row.campaign_name,
+      adName: row.ad_name,
+      adId: row.is_temp_ad_id ? null : row.ad_id,
+    });
+  }
+
+  for (const [key, ad] of uniqueAds) {
+    if (existingKeys.has(key)) continue;
+
+    await upsertAdOperationalStatus({
+      campaign_name: ad.campaignName,
+      ad_name: ad.adName,
+      ad_id: ad.adId,
+      status: "ACTIVE",
+      status_changed_at: new Date().toISOString(),
+      reason: "Meta 동기화 자동 등록",
+      memo: null,
+    });
+
+    existingKeys.add(key);
   }
 
   const dates = result.rows.map((r) => r.date).sort();
