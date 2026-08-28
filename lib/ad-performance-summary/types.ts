@@ -179,7 +179,17 @@ export interface RecentReportsSection {
   weekly: AnalysisReportRecord | null;
 }
 
+export interface DailyPerformancePoint {
+  date: string;
+  spend: number;
+  db: number;
+  validDb: number;
+  bookings: number;
+  cpa: number | null;
+}
+
 export interface AdPerformanceSummary {
+  dailyPerformance: DailyPerformancePoint[];
   todayConclusion: TodayConclusion;
   account: AccountOperatingSummary;
   timeline: TimelineSummary;

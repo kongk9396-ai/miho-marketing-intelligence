@@ -459,6 +459,51 @@ export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary>
   for (const r of allAdResults) statusCounts[r.status] += 1;
   const bottleneck = determineBottleneck(statusCounts, dbProblem);
 
+  // --- 일별 광고비 / DB / CPA ---
+  // Meta 원본 일별 행과 실제 leads 원본을 날짜(KST) 기준으로 집계한다.
+  const dailySpendMap = new Map<string, number>();
+
+  for (const row of windowMetaRows) {
+    dailySpendMap.set(
+      row.date,
+      (dailySpendMap.get(row.date) ?? 0) + Number(row.spend ?? 0)
+    );
+  }
+
+  const dailyLeadMap = new Map<string, typeof allLeads>();
+
+  for (const lead of allLeads) {
+    const date = toKstDateOnly(lead.applied_at);
+
+    if (date < windowStart || date > today) {
+      continue;
+    }
+
+    const rows = dailyLeadMap.get(date) ?? [];
+    rows.push(lead);
+    dailyLeadMap.set(date, rows);
+  }
+
+  const dailyPerformance = [];
+  for (
+    let date = windowStart;
+    date <= today;
+    date = addDaysToDateOnly(date, 1)
+  ) {
+    const spend = dailySpendMap.get(date) ?? 0;
+    const dayLeads = dailyLeadMap.get(date) ?? [];
+    const dayKpi = computeLeadsKpiSummary(dayLeads);
+
+    dailyPerformance.push({
+      date,
+      spend,
+      db: dayKpi.totalDb,
+      validDb: dayKpi.validDb,
+      bookings: dayKpi.confirmedBookings,
+      cpa: dayKpi.totalDb > 0 ? spend / dayKpi.totalDb : null,
+    });
+  }
+
   const reportHeadline = buildReportHeadline({
     officialStartDate,
     operatingDayCount: operating.operatingDayCount,
@@ -474,6 +519,7 @@ export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary>
   });
 
   return {
+    dailyPerformance,
     todayConclusion,
     account: {
       officialStartDate,
