@@ -27,6 +27,11 @@ export interface CampaignAdDiagnosisGroup {
   ads: AdDiagnosisResult[];
 }
 
+export interface AdDiagnosisRange {
+  startDate?: string;
+  endDate?: string;
+}
+
 /** Matches an ad name's " - 버전2" / "- 버전 3" style suffix (see spec examples). */
 const VERSION_SUFFIX_RE = /\s*-\s*버전\s*\d+\s*$/;
 
@@ -57,12 +62,15 @@ async function buildAdInput(
     adName: string | null;
     campaignName: string | null;
   },
-  formCompleteTrackingConnected: boolean
+  formCompleteTrackingConnected: boolean,
+  startDate: string,
+  endDate: string
 ): Promise<AdDiagnosisAdInput> {
-  const today = toKstDateOnly(new Date().toISOString());
-  const start = addDaysToDateOnly(today, -30);
-
-  const metaRows = await getMetaDailyRawRowsForAds(ad.adIds, start, today);
+  const metaRows = await getMetaDailyRawRowsForAds(
+    ad.adIds,
+    startDate,
+    endDate
+  );
   const metaAgg = aggregatePeriodMetrics(metaRows);
   const rateFallback = computeMetaRateFallback(metaRows, {
     spend: metaAgg.totalSpend,
@@ -97,8 +105,8 @@ async function buildAdInput(
   const resolved = await resolveUtmForAd(ad.campaignName, ad.adName);
   if (resolved) {
     const ga4Rows = await getGa4RowsForCampaignContent(resolved.utmCampaign, resolved.utmContent, {
-      startDate: start,
-      endDate: today,
+      startDate,
+      endDate,
     });
     if (ga4Rows.length > 0) {
       const ga4Agg = aggregateGa4Metrics(ga4Rows);
@@ -117,8 +125,10 @@ async function buildAdInput(
       };
     }
 
-    const startIso = kstDateOnlyToInstantIso(start);
-    const endIsoExclusive = kstDateOnlyToInstantIso(addDaysToDateOnly(today, 1));
+    const startIso = kstDateOnlyToInstantIso(startDate);
+    const endIsoExclusive = kstDateOnlyToInstantIso(
+      addDaysToDateOnly(endDate, 1)
+    );
     const leadRows = await getLeadsForCampaignContent(
       resolved.utmCampaign,
       resolved.utmContent,
@@ -153,7 +163,22 @@ function costPerLandingPageView(ad: AdDiagnosisAdInput): number | null {
  * trip per ad per source — matching the rest of this app's combined-analysis
  * queries rather than firing dozens of requests at once.
  */
-export async function buildAdDiagnosisGroups(adLimit = 30): Promise<CampaignAdDiagnosisGroup[]> {
+export async function buildAdDiagnosisGroups(
+  adLimit = 30,
+  range: AdDiagnosisRange = {}
+): Promise<CampaignAdDiagnosisGroup[]> {
+  const defaultEndDate = toKstDateOnly(new Date().toISOString());
+
+  const endDate =
+    range.endDate && /^\d{4}-\d{2}-\d{2}$/.test(range.endDate)
+      ? range.endDate
+      : defaultEndDate;
+
+  const startDate =
+    range.startDate && /^\d{4}-\d{2}-\d{2}$/.test(range.startDate)
+      ? range.startDate
+      : addDaysToDateOnly(endDate, -30);
+
   const hierarchy = await getMetaAdHierarchy();
 
   // Group by (campaign_name, ad_name), not raw ad_id: a real-world ad can
@@ -177,9 +202,11 @@ export async function buildAdDiagnosisGroups(adLimit = 30): Promise<CampaignAdDi
 
   const identities = [...byIdentity.values()].slice(0, adLimit);
 
-  const today = toKstDateOnly(new Date().toISOString());
-  const start = addDaysToDateOnly(today, -30);
-  const formCompleteTrackingConnected = await checkFormCompleteTrackingConnected(start, today);
+  const formCompleteTrackingConnected =
+    await checkFormCompleteTrackingConnected(
+      startDate,
+      endDate
+    );
 
   const perAdInputs: AdDiagnosisAdInput[] = [];
   for (const identity of identities) {
@@ -193,7 +220,9 @@ export async function buildAdDiagnosisGroups(adLimit = 30): Promise<CampaignAdDi
           adName: identity.adName,
           campaignName: identity.campaignName,
         },
-        formCompleteTrackingConnected
+        formCompleteTrackingConnected,
+        startDate,
+        endDate
       )
     );
   }

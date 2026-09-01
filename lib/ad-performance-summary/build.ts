@@ -58,6 +58,11 @@ import type {
   LandingChangeSection,
 } from "@/lib/ad-performance-summary/types";
 
+export interface AdPerformanceSummaryRange {
+  startDate?: string;
+  endDate?: string;
+}
+
 const REPORT_WINDOW_DAYS = 30;
 
 /**
@@ -262,9 +267,20 @@ async function buildLandingChangeSection(): Promise<LandingChangeSection> {
  * ad-operations) — this function's own job is orchestration and shaping,
  * not new business rules.
  */
-export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary> {
-  const today = toKstDateOnly(new Date().toISOString());
-  const windowStart = addDaysToDateOnly(today, -REPORT_WINDOW_DAYS);
+export async function buildAdPerformanceSummary(
+  range: AdPerformanceSummaryRange = {}
+): Promise<AdPerformanceSummary> {
+  const defaultToday = toKstDateOnly(new Date().toISOString());
+
+  const today =
+    range.endDate && /^\d{4}-\d{2}-\d{2}$/.test(range.endDate)
+      ? range.endDate
+      : defaultToday;
+
+  const windowStart =
+    range.startDate && /^\d{4}-\d{2}-\d{2}$/.test(range.startDate)
+      ? range.startDate
+      : addDaysToDateOnly(today, -REPORT_WINDOW_DAYS);
 
   const [
     metaTotals,
@@ -290,7 +306,10 @@ export async function buildAdPerformanceSummary(): Promise<AdPerformanceSummary>
     listAdOperationalStatuses(),
     getOffSnapshotsByStatusId(),
     getAllLeadsForAnalysis(),
-    buildAdDiagnosisGroups(),
+    buildAdDiagnosisGroups(30, {
+      startDate: windowStart,
+      endDate: today,
+    }),
     getMetaDailyRowsInRange(windowStart, today),
     getMetaCampaignDailyRowsInRange(windowStart, today),
     getGa4DailyRows({ startDate: windowStart, endDate: today }),

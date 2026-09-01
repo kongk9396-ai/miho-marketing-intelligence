@@ -20,15 +20,34 @@ const DEFAULT_SETTINGS: MetaSyncSettings = {
 
 // --- meta_daily -------------------------------------------------------------
 
-export async function upsertMetaDailyRows(rows: MetaDailyInsert[]): Promise<UpsertResult> {
+export async function upsertMetaDailyRows(
+  rows: MetaDailyInsert[]
+): Promise<UpsertResult> {
   if (rows.length === 0) {
     return { inserted: 0, updated: 0 };
   }
 
+  /**
+   * 한 Meta 보고서 안에서 동일한 date + ad_id가 여러 번 나오는 경우가 있다.
+   *
+   * PostgreSQL upsert는 한 SQL 명령 안에서 같은 conflict key를 두 번
+   * 업데이트할 수 없으므로 저장 전에 중복 키를 정리한다.
+   *
+   * 동일 키가 여러 번 있으면 파일의 마지막 행을 사용한다.
+   */
+  const dedupedByKey = new Map<string, MetaDailyInsert>();
+
+  for (const row of rows) {
+    const key = `${row.date}|${row.ad_id}`;
+    dedupedByKey.set(key, row);
+  }
+
+  const dedupedRows = [...dedupedByKey.values()];
+
   const supabase = getSupabaseServiceRoleClient();
 
-  const adIds = [...new Set(rows.map((r) => r.ad_id))];
-  const dates = [...new Set(rows.map((r) => r.date))];
+  const adIds = [...new Set(dedupedRows.map((r) => r.ad_id))];
+  const dates = [...new Set(dedupedRows.map((r) => r.date))];
 
   const { data: existingRows, error: lookupError } = await supabase
     .from("meta_daily")
@@ -40,19 +59,30 @@ export async function upsertMetaDailyRows(rows: MetaDailyInsert[]): Promise<Upse
     throwSupabaseError("meta_daily 조회", lookupError);
   }
 
-  const existingKeys = new Set((existingRows ?? []).map((r) => `${r.date}|${r.ad_id}`));
-  const updated = rows.filter((r) => existingKeys.has(`${r.date}|${r.ad_id}`)).length;
-  const inserted = rows.length - updated;
+  const existingKeys = new Set(
+    (existingRows ?? []).map((r) => `${r.date}|${r.ad_id}`)
+  );
+
+  const updated = dedupedRows.filter((r) =>
+    existingKeys.has(`${r.date}|${r.ad_id}`)
+  ).length;
+
+  const inserted = dedupedRows.length - updated;
 
   const { error: upsertError } = await supabase
     .from("meta_daily")
-    .upsert(rows, { onConflict: "date,ad_id" });
+    .upsert(dedupedRows, {
+      onConflict: "date,ad_id",
+    });
 
   if (upsertError) {
     throwSupabaseError("meta_daily 저장", upsertError);
   }
 
-  return { inserted, updated };
+  return {
+    inserted,
+    updated,
+  };
 }
 
 // --- meta_import_history ------------------------------------------------------
