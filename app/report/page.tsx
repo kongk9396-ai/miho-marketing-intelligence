@@ -165,6 +165,15 @@ export default async function ReportPage({
             description="광고부터 문의·예약까지 핵심 결과를 한눈에 확인합니다."
           />
 
+          <div className="mb-5">
+            <Link
+              href="/report/meeting"
+              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              회의용 주간 보고 열기 →
+            </Link>
+          </div>
+
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             {err.message}
           </div>
