@@ -33,7 +33,14 @@ const ATTRIBUTION_HEADER_ALIASES: Record<string, string[]> = {
   utm_source: ["utm_source", "utm_source(출처)", "출처"],
   utm_medium: ["utm_medium", "utm_medium(매체)", "매체"],
   utm_campaign: ["utm_campaign", "utm_campaign(캠페인)", "캠페인"],
-  utm_content: ["utm_content", "utm_content(콘텐츠)", "콘텐츠", "소재"],
+  utm_content: [
+    "utm_content",
+    "utm_content(콘텐츠)",
+    "utm_content(콘텐츠 구분)",
+    "콘텐츠",
+    "콘텐츠 구분",
+    "소재",
+  ],
   result_status: ["result_status"],
   booking_status: ["booking_status"],
 };

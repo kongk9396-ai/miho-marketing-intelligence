@@ -113,6 +113,18 @@ export default function MeetingReportPage() {
   const [ga4FormComplete, setGa4FormComplete] = useState("");
   const [actualDb, setActualDb] = useState("");
 
+  const [landingDb, setLandingDb] = useState<
+    Array<{
+      key: string;
+      label: string;
+      actualDb: number;
+      ads: Array<{
+        adName: string;
+        db: number;
+      }>;
+    }>
+  >([]);
+
   const [ga4Loading, setGa4Loading] = useState(false);
   const [ga4AutoLoaded, setGa4AutoLoaded] = useState(false);
   const [ga4Message, setGa4Message] = useState("");
@@ -158,7 +170,37 @@ export default function MeetingReportPage() {
         setGa4Cta(String(data.ctaClicks ?? 0));
         setGa4FormStart(String(data.formStarts ?? 0));
         setGa4FormComplete(String(data.formCompletes ?? 0));
-        setActualDb(String(data.actualDb ?? 0));
+
+        // 실제 문의(DB)는 Supabase leads가 아니라
+        // 원본 Google Sheet를 직접 읽는 meeting-leads API를 기준으로 사용한다.
+        const leadsResponse = await fetch(
+          `/api/report/meeting-leads?start=${currStart}&end=${currEnd}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+
+        const leadsData = await leadsResponse.json();
+
+        if (!leadsResponse.ok || !leadsData.ok) {
+          throw new Error(
+            leadsData.message || "실제 상담 DB를 불러오지 못했습니다."
+          );
+        }
+
+        const parsedLandings = Array.isArray(leadsData.landings)
+          ? leadsData.landings
+          : [];
+
+        const totalActualDb = parsedLandings.reduce(
+          (sum: number, landing: { actualDb?: number }) =>
+            sum + Number(landing.actualDb ?? 0),
+          0
+        );
+
+        setLandingDb(parsedLandings);
+        setActualDb(String(totalActualDb));
 
         setGa4AutoLoaded(true);
         setGa4Message(
@@ -185,6 +227,22 @@ export default function MeetingReportPage() {
 
     return () => controller.abort();
   }, [currStart, currEnd]);
+
+  const firstNoseDb =
+    landingDb.find((item) => item.key === "first_nose") ?? {
+      key: "first_nose",
+      label: "코첫",
+      actualDb: 0,
+      ads: [],
+    };
+
+  const underEyeDb =
+    landingDb.find((item) => item.key === "under_eye") ?? {
+      key: "under_eye",
+      label: "눈밑",
+      actualDb: 0,
+      ads: [],
+    };
 
   const analysis = useMemo(() => {
     const detail = rows.filter((r) => t(get(r, H.day)));
@@ -659,6 +717,95 @@ export default function MeetingReportPage() {
             set={setActualDb}
           />
         </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">
+                  코첫 랜딩
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  Google Sheet 실제 문의
+                </div>
+              </div>
+
+              <div className="text-2xl font-bold text-gray-900">
+                {firstNoseDb.actualDb}
+                <span className="ml-1 text-sm font-medium text-gray-500">
+                  건
+                </span>
+              </div>
+            </div>
+
+            {firstNoseDb.ads.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                {firstNoseDb.ads.map((ad) => (
+                  <div
+                    key={ad.adName}
+                    className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0 truncate pr-3 text-gray-700">
+                      {ad.adName}
+                    </span>
+                    <span className="shrink-0 font-semibold text-gray-900">
+                      DB {ad.db}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 text-xs text-gray-400">
+                광고별 식별 정보가 없습니다.
+              </div>
+            )}
+          </div>
+
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">
+                  눈밑 랜딩
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  Google Sheet 실제 문의
+                </div>
+              </div>
+
+              <div className="text-2xl font-bold text-gray-900">
+                {underEyeDb.actualDb}
+                <span className="ml-1 text-sm font-medium text-gray-500">
+                  건
+                </span>
+              </div>
+            </div>
+
+            {underEyeDb.ads.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                {underEyeDb.ads.map((ad) => (
+                  <div
+                    key={ad.adName}
+                    className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0 truncate pr-3 text-gray-700">
+                      {ad.adName}
+                    </span>
+                    <span className="shrink-0 font-semibold text-gray-900">
+                      DB {ad.db}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 text-xs text-gray-400">
+                광고별 식별 정보가 없습니다.
+              </div>
+            )}
+          </div>
+
+        </div>
+
         <div className="mt-3 text-xs text-gray-500">
           GA4 form_complete 추적값:{" "}
           <span className="font-semibold">
