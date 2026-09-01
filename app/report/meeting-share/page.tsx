@@ -124,12 +124,11 @@ export default function MeetingSharePage() {
       <section className="mt-6 rounded-2xl border bg-white p-6">
         <h2 className="text-xl font-bold">랜딩 이탈 분석</h2>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-4">
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
           {[
-            ["1. 랜딩 진입", num(s.landingSessions)],
-            ["2. CTA 클릭", num(s.ctaClicks)],
-            ["3. 폼 시작", num(s.formStarts)],
-            ["4. 실제 문의(DB)", num(s.actualDb)],
+            ["실제 문의(DB)", num(s.actualDb)],
+            ["코첫 문의", num(data.landings.find((x: any) => x.name === "코첫")?.actualDb ?? 0)],
+            ["눈밑 문의", num(data.landings.find((x: any) => x.name === "눈밑")?.actualDb ?? 0)],
           ].map(([label, value]) => (
             <div key={label} className="rounded-xl border bg-gray-50 p-5">
               <div className="text-sm text-gray-500">{label}</div>
