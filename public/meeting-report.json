@@ -1,0 +1,67 @@
+﻿{
+  "generatedAt": "2026-09-01",
+  "period": {
+    "previous": {
+      "start": "2026-08-17",
+      "end": "2026-08-23"
+    },
+    "current": {
+      "start": "2026-08-24",
+      "end": "2026-08-29"
+    }
+  },
+  "summary": {
+    "spend": 801348,
+    "impressions": 66820,
+    "linkClicks": 2737,
+    "landingViews": 2243,
+    "ctr": 4.10,
+    "cpc": 293,
+    "lpvCost": 357,
+    "cpm": 11993,
+    "landingSessions": 220,
+    "ctaClicks": 220,
+    "formStarts": 15,
+    "actualDb": 15
+  },
+  "previous": {
+    "spend": 1297272,
+    "impressions": 155390,
+    "linkClicks": 12182,
+    "landingViews": 8172,
+    "ctr": 7.84,
+    "cpc": 106,
+    "lpvCost": 159,
+    "cpm": 8348
+  },
+  "landings": [
+    {
+      "name": "코첫",
+      "actualDb": 12,
+      "ads": [
+        { "name": "(광고소재 미확인)", "db": 11 },
+        { "name": "creative_a", "db": 1 }
+      ]
+    },
+    {
+      "name": "눈밑",
+      "actualDb": 3,
+      "ads": [
+        { "name": "(광고소재 미확인)", "db": 3 }
+      ]
+    }
+  ],
+  "daily": [
+    { "date": "2026-08-24", "spend": 164253, "impressions": 21669, "clicks": 1533, "lpv": 1186, "cpc": 107 },
+    { "date": "2026-08-25", "spend": 120935, "impressions": 9258, "clicks": 421, "lpv": 347, "cpc": 287 },
+    { "date": "2026-08-26", "spend": 160382, "impressions": 15768, "clicks": 321, "lpv": 309, "cpc": 500 },
+    { "date": "2026-08-27", "spend": 94979, "impressions": 9861, "clicks": 284, "lpv": 243, "cpc": 334 },
+    { "date": "2026-08-28", "spend": 171289, "impressions": 7564, "clicks": 143, "lpv": 126, "cpc": 1198 },
+    { "date": "2026-08-29", "spend": 89510, "impressions": 2700, "clicks": 35, "lpv": 32, "cpc": 2557 }
+  ],
+  "notes": {
+    "good": "영상 완주율이 가장 높은 광고는 눈밑지_최선다해1이며 3초 시청자 기준 30.4%가 끝까지 시청했습니다.",
+    "check": "링크 클릭률은 지난 기간 7.84%에서 이번 기간 4.10%로 낮아졌고, 클릭 1회 비용은 ₩106에서 ₩293으로 상승했습니다. LPV 1회 비용도 ₩159에서 ₩357로 상승했습니다.",
+    "action": "클릭률이 낮아진 광고부터 첫 장면·카피·썸네일 후킹을 비교하고, LPV 비용이 높은 광고를 우선 점검합니다. GA4 form_complete 이벤트도 실제 제출 성공 시점에 발생하는지 확인이 필요합니다."
+  }
+}
