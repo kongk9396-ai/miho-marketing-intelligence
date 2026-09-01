@@ -6,6 +6,80 @@ import { SchemaNotReadyError } from "@/lib/meta/schema-not-ready";
 
 export const dynamic = "force-dynamic";
 
+function dateOnly(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function addDays(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function resolveReportRange(params: {
+  preset?: string;
+  start?: string;
+  end?: string;
+}) {
+  const now = new Date();
+
+  if (
+    params.start &&
+    params.end &&
+    /^\d{4}-\d{2}-\d{2}$/.test(params.start) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(params.end)
+  ) {
+    return {
+      preset: "custom",
+      startDate: params.start,
+      endDate: params.end,
+      label: "직접 선택",
+    };
+  }
+
+  if (params.preset === "this-week") {
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const monday = addDays(now, mondayOffset);
+
+    return {
+      preset: "this-week",
+      startDate: dateOnly(monday),
+      endDate: dateOnly(now),
+      label: "이번 주",
+    };
+  }
+
+  if (params.preset === "last-week") {
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+
+    const thisMonday = addDays(now, mondayOffset);
+    const lastMonday = addDays(thisMonday, -7);
+    const lastSunday = addDays(thisMonday, -1);
+
+    return {
+      preset: "last-week",
+      startDate: dateOnly(lastMonday),
+      endDate: dateOnly(lastSunday),
+      label: "지난주",
+    };
+  }
+
+  const end = now;
+  const start = addDays(end, -6);
+
+  return {
+    preset: "7d",
+    startDate: dateOnly(start),
+    endDate: dateOnly(end),
+    label: "최근 7일",
+  };
+}
+
 function won(value: number) {
   return `${Math.round(value).toLocaleString("ko-KR")}원`;
 }
@@ -61,11 +135,27 @@ function ActionBox({
   );
 }
 
-export default async function ReportPage() {
+interface ReportPageProps {
+  searchParams: Promise<{
+    preset?: string;
+    start?: string;
+    end?: string;
+  }>;
+}
+
+export default async function ReportPage({
+  searchParams,
+}: ReportPageProps) {
+  const params = await searchParams;
+  const selectedRange = resolveReportRange(params);
+
   let summary;
 
   try {
-    summary = await buildAdPerformanceSummary();
+    summary = await buildAdPerformanceSummary({
+      startDate: selectedRange.startDate,
+      endDate: selectedRange.endDate,
+    });
   } catch (err) {
     if (err instanceof SchemaNotReadyError) {
       return (
@@ -86,13 +176,9 @@ export default async function ReportPage() {
   }
 
   /*
-   * 요약 보고 기간 정합성
-   *
-   * Meta 광고 데이터가 아직 들어오지 않은 날짜의 DB를
-   * CPA 계산에 섞지 않기 위해,
-   * "마지막으로 광고비가 확인된 날짜"를 기준으로 최근 7일을 잡는다.
-   *
-   * 광고비 / DB / 유효 DB / 예약 / CPA 모두 같은 기간을 사용한다.
+   * 선택한 기간 데이터.
+   * Meta 데이터가 없는 뒤쪽 날짜는 CPA 왜곡 방지를 위해
+   * 마지막 광고비 확인일까지 KPI 계산에서 제외한다.
    */
   const allDaily = summary.dailyPerformance;
 
@@ -107,11 +193,8 @@ export default async function ReportPage() {
 
   const recentDays =
     latestMetaIndex >= 0
-      ? allDaily.slice(
-          Math.max(0, latestMetaIndex - 6),
-          latestMetaIndex + 1
-        )
-      : [];
+      ? allDaily.slice(0, latestMetaIndex + 1)
+      : allDaily;
 
   const periodSpend = recentDays.reduce(
     (sum, row) => sum + row.spend,
@@ -262,11 +345,113 @@ export default async function ReportPage() {
         description="광고 성과부터 문의·예약까지, 지금 알아야 할 내용만 정리했습니다."
       />
 
+      <div className="mb-5">
+        <Link
+          href="/report/meeting"
+          className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+        >
+          회의용 주간 보고 열기 →
+        </Link>
+      </div>
+
+      <section className="mb-5 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">
+              보고 기간
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {selectedRange.startDate} ~ {selectedRange.endDate}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/report?preset=this-week"
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                selectedRange.preset === "this-week"
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              이번 주
+            </Link>
+
+            <Link
+              href="/report?preset=last-week"
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                selectedRange.preset === "last-week"
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              지난주
+            </Link>
+
+            <Link
+              href="/report?preset=7d"
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                selectedRange.preset === "7d"
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              최근 7일
+            </Link>
+          </div>
+        </div>
+
+        <form
+          method="GET"
+          action="/report"
+          className="mt-4 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-4"
+        >
+          <div>
+            <label
+              htmlFor="report-start"
+              className="mb-1 block text-xs text-gray-500"
+            >
+              시작일
+            </label>
+            <input
+              id="report-start"
+              name="start"
+              type="date"
+              defaultValue={selectedRange.startDate}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-700"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="report-end"
+              className="mb-1 block text-xs text-gray-500"
+            >
+              종료일
+            </label>
+            <input
+              id="report-end"
+              name="end"
+              type="date"
+              defaultValue={selectedRange.endDate}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-700"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-gray-800"
+          >
+            기간 조회
+          </button>
+        </form>
+      </section>
+
       {/* 기간 */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-gray-900">
-            광고 데이터 기준 최근 7일
+            {selectedRange.label}
           </p>
 
           <p className="mt-0.5 text-xs text-gray-400">
@@ -578,7 +763,7 @@ export default async function ReportPage() {
       <section className="mt-5 rounded-xl border border-gray-200 bg-white p-5">
         <div>
           <h2 className="text-base font-semibold text-gray-950">
-            최근 7일 추이
+            기간별 일자 추이
           </h2>
           <p className="mt-1 text-xs text-gray-500">
             일별 광고비와 문의가 어떻게 움직였는지 확인합니다.
