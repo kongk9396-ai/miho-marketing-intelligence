@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
@@ -111,12 +111,80 @@ export default function MeetingReportPage() {
   const [ga4Cta, setGa4Cta] = useState("");
   const [ga4FormStart, setGa4FormStart] = useState("");
   const [ga4FormComplete, setGa4FormComplete] = useState("");
+  const [actualDb, setActualDb] = useState("");
+
+  const [ga4Loading, setGa4Loading] = useState(false);
+  const [ga4AutoLoaded, setGa4AutoLoaded] = useState(false);
+  const [ga4Message, setGa4Message] = useState("");
 
   // 이번 회의 비교 기준
   const [prevStart, setPrevStart] = useState("2026-08-17");
   const [prevEnd, setPrevEnd] = useState("2026-08-23");
   const [currStart, setCurrStart] = useState("2026-08-24");
   const [currEnd, setCurrEnd] = useState("2026-08-31");
+
+  useEffect(() => {
+    if (!currStart || !currEnd) return;
+
+    const controller = new AbortController();
+
+    async function loadGa4() {
+      setGa4Loading(true);
+      setGa4Message("");
+
+      try {
+        const params = new URLSearchParams({
+          start: currStart,
+          end: currEnd,
+        });
+
+        const response = await fetch(
+          `/api/report/meeting-ga4?${params.toString()}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(
+            data.message || "GA4 데이터를 불러오지 못했습니다."
+          );
+        }
+
+        setGa4Sessions(String(data.sessions ?? 0));
+        setGa4Cta(String(data.ctaClicks ?? 0));
+        setGa4FormStart(String(data.formStarts ?? 0));
+        setGa4FormComplete(String(data.formCompletes ?? 0));
+        setActualDb(String(data.actualDb ?? 0));
+
+        setGa4AutoLoaded(true);
+        setGa4Message(
+          `GA4에서 ${currStart} ~ ${currEnd} 데이터를 자동으로 불러왔습니다.`
+        );
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setGa4AutoLoaded(false);
+        setGa4Message(
+          "GA4 자동 조회에 실패했습니다. 아래 숫자를 직접 입력해도 분석은 계속 사용할 수 있습니다."
+        );
+      } finally {
+        setGa4Loading(false);
+      }
+    }
+
+    loadGa4();
+
+    return () => controller.abort();
+  }, [currStart, currEnd]);
 
   const analysis = useMemo(() => {
     const detail = rows.filter((r) => t(get(r, H.day)));
@@ -245,7 +313,11 @@ export default function MeetingReportPage() {
     const landingSessions = n(ga4Sessions);
     const landingCta = n(ga4Cta);
     const landingFormStart = n(ga4FormStart);
-    const landingFormComplete = n(ga4FormComplete);
+
+    // 실제 상담 신청(DB)을 최종 전환으로 사용한다.
+    // GA4 form_complete는 추적 정상 여부 확인용으로만 사용한다.
+    const landingActualDb = n(actualDb);
+    const trackedFormComplete = n(ga4FormComplete);
 
     const landingFunnel = [
       {
@@ -273,12 +345,12 @@ export default function MeetingReportPage() {
             : null,
       },
       {
-        key: "form_complete",
-        label: "폼 완료",
-        count: landingFormComplete,
+        key: "actual_db",
+        label: "실제 문의(DB)",
+        count: landingActualDb,
         rate:
           landingFormStart > 0
-            ? (landingFormComplete / landingFormStart) * 100
+            ? (landingActualDb / landingFormStart) * 100
             : null,
       },
     ];
@@ -302,10 +374,10 @@ export default function MeetingReportPage() {
       },
       {
         from: "폼 시작",
-        to: "폼 완료",
+        to: "실제 문의(DB)",
         rate:
           landingFormStart > 0
-            ? (landingFormComplete / landingFormStart) * 100
+            ? (landingActualDb / landingFormStart) * 100
             : null,
       },
     ].filter((x) => x.rate !== null);
@@ -329,7 +401,7 @@ export default function MeetingReportPage() {
         "CTA는 눌리지만 폼 시작으로 이어지는 비율이 가장 낮습니다. 버튼 클릭 후 폼 노출 방식, 로딩, 입력 진입 과정의 마찰을 확인하세요.";
     } else if (worstFunnel?.from === "폼 시작") {
       landingAction =
-        "폼까지 들어온 사용자가 완료 전에 많이 이탈합니다. 입력 항목 수, 필수 항목, 오류 메시지, 개인정보 동의 영역을 우선 점검하세요.";
+        "폼을 시작했지만 실제 문의(DB)로 이어지는 비율이 낮습니다. 입력 항목 수, 제출 버튼, 개인정보 동의, 제출 후 DB 저장 과정까지 확인하세요.";
     }
 
     const goodPoints: string[] = [];
@@ -407,7 +479,17 @@ export default function MeetingReportPage() {
       }
     }
 
-    if (worstFunnel && worstFunnel.rate !== null) {
+    if (landingActualDb > 0 && trackedFormComplete === 0) {
+      checkPoints.push(
+        `실제 문의(DB)는 ${integer(landingActualDb)}건 발생했지만 GA4 form_complete는 0건입니다. 실제 접수 문제는 아니며 전환 추적 이벤트를 점검해야 합니다.`
+      );
+
+      nextActions.push(
+        "신청 완료 시 GA4 form_complete 이벤트가 실제 제출 성공 시점에 발생하는지 GTM/GA4 추적을 점검하세요."
+      );
+    }
+
+        if (worstFunnel && worstFunnel.rate !== null) {
       checkPoints.push(
         `랜딩 퍼널에서 가장 큰 이탈은 ${worstFunnel.from} → ${worstFunnel.to} 구간입니다. 다음 단계 이동률은 ${worstFunnel.rate.toFixed(1)}%입니다.`
       );
@@ -438,6 +520,7 @@ export default function MeetingReportPage() {
     ga4Cta,
     ga4FormStart,
     ga4FormComplete,
+    actualDb,
   ]);
 
   async function handleFile(file: File | null) {
@@ -534,8 +617,24 @@ export default function MeetingReportPage() {
             GA4 랜딩 퍼널 입력
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            이번 기간 GA4 숫자 4개를 입력하면 랜딩 이탈 구간을 자동 분석합니다.
+            이번 기간을 기준으로 GA4 데이터를 자동으로 불러옵니다.
+            자동 조회가 안 될 때만 아래 값을 직접 입력하면 됩니다.
           </p>
+
+          <div
+            className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+              ga4AutoLoaded
+                ? "border-green-200 bg-green-50 text-green-700"
+                : ga4Loading
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+            }`}
+          >
+            {ga4Loading
+              ? "GA4 데이터를 불러오는 중..."
+              : ga4Message ||
+                "기간을 선택하면 GA4 데이터를 자동 조회합니다."}
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -555,10 +654,21 @@ export default function MeetingReportPage() {
             set={setGa4FormStart}
           />
           <NumberInput
-            label="폼 완료"
-            value={ga4FormComplete}
-            set={setGa4FormComplete}
+            label="실제 문의(DB)"
+            value={actualDb}
+            set={setActualDb}
           />
+        </div>
+        <div className="mt-3 text-xs text-gray-500">
+          GA4 form_complete 추적값:{" "}
+          <span className="font-semibold">
+            {ga4FormComplete || "0"}건
+          </span>
+          {n(actualDb) > 0 && n(ga4FormComplete) === 0 ? (
+            <span className="ml-2 font-semibold text-amber-600">
+              · 실제 DB는 있으므로 GA4 완료 추적 점검 필요
+            </span>
+          ) : null}
         </div>
       </section>
 
