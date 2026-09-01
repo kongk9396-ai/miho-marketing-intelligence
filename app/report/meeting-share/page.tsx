@@ -22,6 +22,7 @@ export default function MeetingSharePage() {
 
   const s = data.summary;
   const p = data.previous;
+  const c = data.current;
 
   const change = (now: number, prev: number) =>
     prev ? (((now - prev) / prev) * 100).toFixed(1) : "0.0";
@@ -32,16 +33,16 @@ export default function MeetingSharePage() {
         <div className="text-sm text-gray-500">MIHO Marketing Intelligence</div>
         <h1 className="mt-1 text-3xl font-bold">주간 Meta 광고 성과 보고</h1>
         <p className="mt-2 text-gray-600">
-          {data.period.current.start} ~ {data.period.current.end}
+          {data.reportPeriod.start} ~ {data.reportPeriod.end}
         </p>
       </div>
 
       <section className="grid gap-4 md:grid-cols-4">
         {[
-          ["광고비", won(s.spend)],
+          ["광고비", won(c.spend)],
           ["실제 문의(DB)", `${num(s.actualDb)}건`],
-          ["링크 클릭률", `${s.ctr.toFixed(2)}%`],
-          ["LPV 1회 비용", won(s.lpvCost)],
+          ["링크 클릭률", `${c.ctr.toFixed(2)}%`],
+          ["LPV 1회 비용", won(c.lpvCost)],
         ].map(([label, value]) => (
           <div key={label} className="rounded-2xl border bg-white p-5">
             <div className="text-sm text-gray-500">{label}</div>
@@ -88,14 +89,14 @@ export default function MeetingSharePage() {
             </thead>
             <tbody>
               {[
-                ["광고비", p.spend, s.spend, "won"],
-                ["노출", p.impressions, s.impressions, "num"],
-                ["링크 클릭", p.linkClicks, s.linkClicks, "num"],
-                ["랜딩 페이지 조회", p.landingViews, s.landingViews, "num"],
-                ["링크 클릭률", p.ctr, s.ctr, "pct"],
-                ["클릭 1회 비용", p.cpc, s.cpc, "won"],
-                ["LPV 1회 비용", p.lpvCost, s.lpvCost, "won"],
-                ["1,000회 노출 비용", p.cpm, s.cpm, "won"],
+                ["광고비", p.spend, c.spend, "won"],
+                ["노출", p.impressions, c.impressions, "num"],
+                ["링크 클릭", p.linkClicks, c.linkClicks, "num"],
+                ["랜딩 페이지 조회", p.landingViews, c.landingViews, "num"],
+                ["링크 클릭률", p.ctr, c.ctr, "pct"],
+                ["클릭 1회 비용", p.cpc, c.cpc, "won"],
+                ["LPV 1회 비용", p.lpvCost, c.lpvCost, "won"],
+                ["1,000회 노출 비용", p.cpm, c.cpm, "won"],
               ].map(([label, prev, now, type]: any) => {
                 const format = (v: number) =>
                   type === "won"

@@ -1,5 +1,29 @@
 ﻿{
   "generatedAt": "2026-09-01",
+
+  "reportPeriod": {
+    "start": "2026-08-17",
+    "end": "2026-08-31"
+  },
+
+  "summary": {
+    "spend": 2406441,
+    "impressions": 227525,
+    "reach": 167163,
+    "linkClicks": 15107,
+    "landingViews": 10481,
+    "ctr": 6.64,
+    "cpc": 159,
+    "lpvCost": 230,
+    "cpm": 10577,
+    "video3s": 62391,
+    "video25": 36896,
+    "video50": 24323,
+    "video75": 17412,
+    "video95": 13117,
+    "video100": 12334
+  },
+
   "period": {
     "previous": {
       "start": "2026-08-17",
@@ -9,18 +33,6 @@
       "start": "2026-08-24",
       "end": "2026-08-31"
     }
-  },
-
-  "summary": {
-    "spend": 1109169,
-    "impressions": 72135,
-    "linkClicks": 2925,
-    "landingViews": 2309,
-    "ctr": 4.05,
-    "cpc": 379,
-    "lpvCost": 480,
-    "cpm": 15376,
-    "actualDb": 17
   },
 
   "previous": {
@@ -34,87 +46,57 @@
     "cpm": 8348
   },
 
-  "landings": [
-    {
-      "name": "코첫",
-      "actualDb": 13
+  "current": {
+    "spend": 1109169,
+    "impressions": 72135,
+    "linkClicks": 2925,
+    "landingViews": 2309,
+    "ctr": 4.05,
+    "cpc": 379,
+    "lpvCost": 480,
+    "cpm": 15376
+  },
+
+  "db": {
+    "confirmedPeriod": {
+      "start": "2026-08-24",
+      "end": "2026-08-31"
     },
-    {
-      "name": "눈밑",
-      "actualDb": 4
-    }
-  ],
+    "actualDb": 17,
+    "landings": [
+      {
+        "name": "코첫",
+        "actualDb": 13
+      },
+      {
+        "name": "눈밑",
+        "actualDb": 4
+      }
+    ]
+  },
 
   "daily": [
-    {
-      "date": "2026-08-24",
-      "spend": 164253,
-      "impressions": 21669,
-      "clicks": 1533,
-      "lpv": 1186,
-      "cpc": 107
-    },
-    {
-      "date": "2026-08-25",
-      "spend": 120935,
-      "impressions": 9258,
-      "clicks": 421,
-      "lpv": 347,
-      "cpc": 287
-    },
-    {
-      "date": "2026-08-26",
-      "spend": 160382,
-      "impressions": 15768,
-      "clicks": 321,
-      "lpv": 309,
-      "cpc": 500
-    },
-    {
-      "date": "2026-08-27",
-      "spend": 94979,
-      "impressions": 9861,
-      "clicks": 284,
-      "lpv": 243,
-      "cpc": 334
-    },
-    {
-      "date": "2026-08-28",
-      "spend": 171289,
-      "impressions": 7564,
-      "clicks": 143,
-      "lpv": 126,
-      "cpc": 1198
-    },
-    {
-      "date": "2026-08-29",
-      "spend": 89510,
-      "impressions": 2700,
-      "clicks": 35,
-      "lpv": 32,
-      "cpc": 2557
-    },
-    {
-      "date": "2026-08-30",
-      "spend": 129603,
-      "impressions": 2411,
-      "clicks": 58,
-      "lpv": 54,
-      "cpc": 2235
-    },
-    {
-      "date": "2026-08-31",
-      "spend": 178218,
-      "impressions": 2904,
-      "clicks": 130,
-      "lpv": 12,
-      "cpc": 1371
-    }
+    {"date":"2026-08-17","spend":179252,"impressions":25412,"clicks":1799,"lpv":1092,"cpc":100},
+    {"date":"2026-08-18","spend":207692,"impressions":25864,"clicks":2258,"lpv":1400,"cpc":92},
+    {"date":"2026-08-19","spend":189925,"impressions":20853,"clicks":1756,"lpv":1004,"cpc":108},
+    {"date":"2026-08-20","spend":108799,"impressions":16145,"clicks":1429,"lpv":934,"cpc":76},
+    {"date":"2026-08-21","spend":190471,"impressions":22407,"clicks":1532,"lpv":1113,"cpc":124},
+    {"date":"2026-08-22","spend":245324,"impressions":23013,"clicks":1492,"lpv":1146,"cpc":164},
+    {"date":"2026-08-23","spend":175809,"impressions":21696,"clicks":1916,"lpv":1483,"cpc":92},
+    {"date":"2026-08-24","spend":164253,"impressions":21669,"clicks":1533,"lpv":1186,"cpc":107},
+    {"date":"2026-08-25","spend":120935,"impressions":9258,"clicks":421,"lpv":347,"cpc":287},
+    {"date":"2026-08-26","spend":160382,"impressions":15768,"clicks":321,"lpv":309,"cpc":500},
+    {"date":"2026-08-27","spend":94979,"impressions":9861,"clicks":284,"lpv":243,"cpc":334},
+    {"date":"2026-08-28","spend":171289,"impressions":7564,"clicks":143,"lpv":126,"cpc":1198},
+    {"date":"2026-08-29","spend":89510,"impressions":2700,"clicks":35,"lpv":32,"cpc":2557},
+    {"date":"2026-08-30","spend":129603,"impressions":2411,"clicks":58,"lpv":54,"cpc":2235},
+    {"date":"2026-08-31","spend":178218,"impressions":2904,"clicks":130,"lpv":12,"cpc":1371}
   ],
 
   "notes": {
-    "good": "실제 문의(DB)는 17건으로 확인됐으며 코첫 13건, 눈밑 4건입니다.",
-    "check": "링크 클릭률은 전주 7.84%에서 4.05%로 하락했고, 클릭 1회 비용은 약 106원에서 379원으로 상승했습니다. LPV 1회 비용도 약 159원에서 480원으로 상승해 유입 효율이 전주보다 낮아졌습니다.",
-    "action": "유입 효율이 낮아진 광고부터 첫 장면, 썸네일, 카피 후킹을 우선 비교하고 LPV 비용이 높은 소재부터 교체 여부를 검토합니다."
+    "summary": "8/17~8/31 Meta 광고비는 총 2,406,441원이며 노출 227,525회, 링크 클릭 15,107회, 랜딩 페이지 조회 10,481회를 기록했습니다.",
+    "check": "8/24~8/31은 전주 대비 CTR이 7.84%에서 4.05%로 하락했고 CPC는 106원에서 379원, LPV 1회 비용은 159원에서 480원으로 상승했습니다.",
+    "db": "현재 실제 문의(DB)는 Google Sheet에서 8/24~8/31 기준 17건이 확인됐으며 코첫 13건, 눈밑 4건입니다.",
+    "action": "8/25 이후 유입 효율 저하가 뚜렷해 CPC·LPV 비용이 높은 소재부터 첫 장면, 썸네일, 카피 후킹을 우선 비교하고 교체 여부를 검토합니다."
   }
 }
