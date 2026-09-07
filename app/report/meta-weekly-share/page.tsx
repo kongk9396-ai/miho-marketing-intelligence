@@ -52,10 +52,16 @@ export default function MetaWeeklySharePage() {
           </p>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-5">
           <div className="rounded-2xl border bg-white p-5">
-            <p className="text-sm text-gray-500">광고비</p>
+            <p className="text-sm text-gray-500">이번 주 광고비</p>
             <p className="mt-2 text-2xl font-bold">{won(current.spend)}</p>
+          </div>
+
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5">
+            <p className="text-sm text-violet-700">9월 누적 광고비</p>
+            <p className="mt-2 text-2xl font-bold">₩922,858</p>
+            <p className="mt-1 text-xs text-violet-600">9/1 ~ 9/7 기준</p>
           </div>
 
           <div className="rounded-2xl border bg-white p-5">
