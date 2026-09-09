@@ -1,3 +1,4 @@
+import { LandingDbSummary } from "@/components/report/landing-db-summary";
 ﻿const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;
 const num = (n: number) => n.toLocaleString("ko-KR");
 
@@ -51,6 +52,8 @@ export default function MetaWeeklySharePage() {
             2026-08-31 ~ 2026-09-06 · 전주 대비
           </p>
         </header>
+
+        <LandingDbSummary />
 
         <section className="grid gap-4 md:grid-cols-5">
           <div className="rounded-2xl border bg-white p-5">
