@@ -1,4 +1,29 @@
-export default function MetaWeeklySharePage() {
+﻿const fs = require("fs");
+const path = require("path");
+
+const file = path.join(
+  process.cwd(),
+  "app",
+  "report",
+  "meta-weekly-share",
+  "page.tsx"
+);
+
+if (!fs.existsSync(file)) {
+  throw new Error("파일을 찾을 수 없습니다: " + file);
+}
+
+const backup =
+  file +
+  ".bak_full_" +
+  new Date().toISOString().replace(/[:.]/g, "-");
+
+fs.copyFileSync(file, backup);
+
+console.log("기존 보고서 백업 완료:");
+console.log(backup);
+
+const content = `export default function MetaWeeklySharePage() {
   const fmt = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
 
   const videoSteps = [
@@ -670,3 +695,20 @@ export default function MetaWeeklySharePage() {
     </main>
   );
 }
+`;
+
+fs.writeFileSync(file, content, "utf8");
+
+console.log("");
+console.log("==============================================");
+console.log("Meta 주간 보고서 전체 교체 완료");
+console.log("==============================================");
+console.log("주간: 2026-09-06 ~ 2026-09-12");
+console.log("전주: 2026-08-30 ~ 2026-09-05");
+console.log("이번주 광고비: ₩907,867");
+console.log("9월 누적 광고비: ₩2,343,239");
+console.log("DB: 20 → 15");
+console.log("LPV: 1,552");
+console.log("링크 클릭: 2,302");
+console.log("영상 완주율: 20.8%");
+console.log("==============================================");
